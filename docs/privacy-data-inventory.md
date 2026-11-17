@@ -5,7 +5,8 @@ Cuevora on iOS does not require an account. Scripts, settings, rehearsal reports
 ## On the device
 
 - Scripts: title, text, tags, markers, highlights, created and updated times, and up to ten revision snapshots.
-- Settings: appearance, prompter defaults, haptics, gestures, voice preference and the last reading position.
+- Settings: appearance, prompter defaults, haptics, gestures, voice preference and the last reading position. Each script also keeps its own reading position and pin on this device.
+- Spotlight: script titles, tags and a short excerpt are indexed on this device so they can appear in Spotlight search. The index is not uploaded.
 - Rehearsal reports: only after the user taps Save Report. The report can include the on-device transcript.
 - Recordings: movie files in Application Support, plus a short metadata record. They are not part of the JSON backup.
 - Backups: created only when the user exports one.

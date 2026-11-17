@@ -14,24 +14,32 @@ struct RehearsalView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Speech") {
+                Section {
                     Text(SpeechPrivacy.onDeviceNote)
                     Text(SpeechPrivacy.retentionNote)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                     if let message = speech.message, !speech.listening {
                         Text(message)
                     }
-                    if speech.listening { Text(speech.lastTranscript.isEmpty ? "Listening…" : speech.lastTranscript) }
-                    Button(speech.listening ? "Stop and Estimate" : "Start Rehearsal") { speech.listening ? finish() : begin() }
-                        .disabled(saved)
+                    if speech.listening {
+                        Label(speech.lastTranscript.isEmpty ? "Listening…" : speech.lastTranscript, systemImage: "waveform")
+                    }
+                    Button(speech.listening ? "Stop and Estimate" : "Start Rehearsal", systemImage: speech.listening ? "stop.fill" : "waveform") {
+                        speech.listening ? finish() : begin()
+                    }
+                    .disabled(saved)
                 }
                 if let metrics {
                     Section("Estimate") {
                         Text("These figures are estimates from the on-device transcript, not a score.")
-                        Text("Duration \(ReadTime.clock(Double(metrics.durationSeconds)))")
-                        Text(metrics.wordsPerMinute.map { "About \($0) words per minute" } ?? "Words per minute unavailable")
-                        Text(metrics.scriptCoverage.map { "About \(Int(($0 * 100).rounded())) percent of the script length" } ?? "Script coverage unavailable")
-                        Text("\(metrics.longPauseCount) long pauses")
-                        Text("\(metrics.fillerWordCount) filler-word matches")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        LabeledContent("Duration", value: ReadTime.clock(Double(metrics.durationSeconds)))
+                        LabeledContent("Pace", value: metrics.wordsPerMinute.map { "About \($0) words per minute" } ?? "Unavailable")
+                        LabeledContent("Coverage", value: metrics.scriptCoverage.map { "About \(Int(($0 * 100).rounded())) percent" } ?? "Unavailable")
+                        LabeledContent("Long pauses", value: "\(metrics.longPauseCount)")
+                        LabeledContent("Filler words", value: "\(metrics.fillerWordCount)")
                         ForEach(metrics.unavailableMetrics, id: \.self) { Text("\($0) unavailable").foregroundStyle(.secondary) }
                         ForEach(metrics.suggestions, id: \.self) { Text($0) }
                     }
@@ -43,7 +51,11 @@ struct RehearsalView: View {
             }
             .navigationTitle("Rehearsal")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Close") { if !saved { speech.stop(); speech.resetTranscript() }; dismiss() } }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { if !saved { speech.stop(); speech.resetTranscript() }; dismiss() }
+                }
+            }
             .onDisappear { if !saved { speech.stop() } }
         }
     }

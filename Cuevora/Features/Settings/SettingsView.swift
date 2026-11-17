@@ -5,35 +5,29 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Bindable var preferences: AppPreferences
+    var embedded: Bool = false
     @Query(sort: \RecordingItem.createdAt, order: .reverse) private var recordings: [RecordingItem]
     @Query private var scripts: [Script]
     @Query private var rehearsals: [RehearsalRecord]
     @State private var confirmClear = false
-    @State private var shareURL: URL?
-    @State private var message: String?
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Account") {
-                    LabeledContent(IdentityPolicy.statusTitle, value: "No account")
-                    Text(IdentityPolicy.statusDetail)
-                    Text(IdentityPolicy.deletionDetail)
-                }
                 Section("Appearance") {
                     Picker("Colour Mode", selection: $preferences.colorMode) {
                         Text("System").tag("system")
                         Text("Light").tag("light")
                         Text("Dark").tag("dark")
                     }
-                    Picker("Reading Profile", selection: $preferences.accessibilityProfile) {
+                    Picker("Reading", selection: $preferences.accessibilityProfile) {
                         ForEach(ReadingProfile.allCases, id: \.rawValue) { profile in
                             Text(profile.title).tag(profile.rawValue)
                         }
                     }
                     Text(preferences.profile.detail).font(.footnote).foregroundStyle(.secondary)
                 }
-                Section("Teleprompter Defaults") {
+                Section("Prompter") {
                     Picker("Theme", selection: $preferences.defaultTheme) {
                         ForEach(PromptTheme.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
                     }
@@ -64,26 +58,20 @@ struct SettingsView: View {
                     Text("Voice commands and adaptive speed use on-device recognition only, and only when you turn them on. They stay off while a video is recording.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Section("Recordings") {
-                    if recordings.isEmpty { Text("Recordings stay on this device. None are saved yet.") }
-                    ForEach(recordings) { item in
-                        VStack(alignment: .leading) {
-                            Text(item.scriptTitle)
-                            Text(recordingLabel(item)).font(.caption).foregroundStyle(.secondary)
-                        }
-                        .swipeActions {
-                            Button("Delete", role: .destructive) {
-                                RecordingFiles.removeFile(named: item.fileName)
-                                context.delete(item)
-                                try? context.save()
-                            }
-                        }
-                    }
-                }
                 Section("Privacy") {
-                    Text("Scripts, settings, rehearsal reports and recordings stay on this device unless you export or share them. Cuevora does not collect analytics and does not require an account.")
+                    Text("Scripts, settings, rehearsal reports and recordings stay on this device unless you export or share them.")
+                    Text(IdentityPolicy.statusDetail)
                     Text(CloudSyncPolicy.explanation)
                     Button("Delete Local Data", role: .destructive) { confirmClear = true }
+                }
+                Section("Keyboard") {
+                    LabeledContent("New script", value: "Command N")
+                    LabeledContent("Play or pause", value: "Space")
+                    LabeledContent("Skip", value: "Left and right arrows")
+                    LabeledContent("Speed", value: "Up and down arrows")
+                    LabeledContent("Mirror, focus, reset", value: "M, F, R")
+                    LabeledContent("Close the prompter", value: "Escape")
+                    Button("Reset Prompter Defaults") { resetPrompterDefaults() }
                 }
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0")
@@ -93,8 +81,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { Button("Done") { try? context.save(); dismiss() } }
+            .navigationBarTitleDisplayMode(embedded ? .large : .inline)
+            .scrollContentBackground(.hidden)
+            .background(CuevoraTheme.background)
+            .toolbar {
+                if !embedded {
+                    Button("Done") { try? context.save(); dismiss() }
+                }
+            }
             .confirmationDialog("Delete all local Cuevora data?", isPresented: $confirmClear, titleVisibility: .visible) {
                 Button("Delete Local Data", role: .destructive) { clearLocalData() }
             } message: { Text("This removes scripts, revisions, rehearsal reports and recordings from this device. Export a backup first if you want a copy.") }
@@ -102,9 +96,20 @@ struct SettingsView: View {
         }
     }
 
-    private func recordingLabel(_ item: RecordingItem) -> String {
-        let state = item.recoverable ? (item.partial ? "Partial take" : "Saved take") : "Recovery failed"
-        return "\(state), \(ReadTime.clock(item.duration)), \(item.createdAt.formatted(date: .abbreviated, time: .shortened))"
+    private func resetPrompterDefaults() {
+        let fresh = PortableSettings()
+        preferences.defaultTheme = fresh.defaultTheme
+        preferences.defaultSpeed = fresh.defaultSpeed
+        preferences.defaultFontSize = fresh.defaultFontSize
+        preferences.defaultLineSpacing = fresh.defaultLineSpacing
+        preferences.wordsPerMinute = fresh.wordsPerMinute
+        preferences.countdownDuration = fresh.countdownDuration
+        preferences.mirrorMode = fresh.mirrorMode
+        preferences.focusLineEnabled = fresh.focusLineEnabled
+        preferences.keepScreenAwake = fresh.keepScreenAwake
+        preferences.hapticsEnabled = fresh.hapticsEnabled
+        preferences.gestureControlsEnabled = fresh.gestureControlsEnabled
+        try? context.save()
     }
 
     private func clearLocalData() {

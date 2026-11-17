@@ -32,27 +32,21 @@ struct RecordingView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                stage
-                    .overlay {
-                        if case let .countdown(seconds) = capture.phase {
-                            Text("\(seconds)")
-                                .font(.system(size: 72, weight: .bold))
-                                .foregroundStyle(.white)
-                                .padding(24)
-                                .background(.black.opacity(0.72), in: Circle())
-                                .accessibilityLabel("Recording starts in \(seconds)")
-                        }
+            stage
+                .overlay {
+                    if case let .countdown(seconds) = capture.phase {
+                        Text("\(seconds)")
+                            .font(.system(size: 88, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(width: 140, height: 140)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .accessibilityLabel("Recording starts in \(seconds)")
                     }
-                status
-                controls
-            }
-            .background(.black)
-            .navigationTitle("Record")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                Button("Close") { capture.shutdown(); dismiss() }
-            }
+                }
+                .overlay(alignment: .top) { status }
+                .safeAreaInset(edge: .bottom, spacing: 0) { controls }
+                .background(.black)
+                .toolbar(.hidden, for: .navigationBar)
             .onAppear { capture.prepare(quality: preferences.recordingQuality) }
             .onDisappear { playing = false; capture.shutdown() }
             .onChange(of: scenePhase) {
@@ -129,18 +123,28 @@ struct RecordingView: View {
     }
 
     private var status: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(statusText).font(.subheadline).foregroundStyle(.white)
-            Text("The script is an overlay. It is not part of the video.")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.8))
-            if let message = capture.message {
-                Text(message).font(.caption).foregroundStyle(.white)
+        HStack(spacing: 12) {
+            Button("Close", systemImage: "xmark") { capture.shutdown(); dismiss() }
+                .labelStyle(.iconOnly)
+                .font(.body.weight(.semibold))
+                .frame(width: 36, height: 36)
+                .background(.ultraThinMaterial, in: Circle())
+                .accessibilityLabel("Close")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(statusText).font(.subheadline.weight(.semibold))
+                Text(capture.message ?? "The script stays on screen. It is not part of the video.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .foregroundStyle(.white)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
     }
 
     private var statusText: String {
@@ -155,35 +159,73 @@ struct RecordingView: View {
     }
 
     private var controls: some View {
-        VStack {
-            HStack {
-                Button(playing ? "Pause Prompt" : "Play Prompt") { playing.toggle() }
-                Button(capture.phase == .recording ? "Stop" : "Record") {
-                    if capture.phase == .recording || isCountdown {
-                        if isCountdown { capture.cancelCountdown() } else { playing = false; capture.stop() }
-                    } else {
-                        capture.requestStart(countdown: preferences.countdownDuration, quality: preferences.recordingQuality)
-                    }
-                }
-                .accessibilityHint("Asks for the camera and microphone only when you start.")
-                Button("Switch Camera") { capture.switchCamera() }
-                    .disabled(capture.phase == .recording || isCountdown)
-            }
-            HStack {
-                Button(split ? "Overlay" : "Split View") { split.toggle() }
-                Button("Share") { showShare = true }.disabled(capture.previewURL == nil)
-                Button("Save to Photos") { capture.saveCurrentToPhotos() }.disabled(capture.previewURL == nil)
-                Button("Delete Take", role: .destructive) { capture.discard() }.disabled(capture.previewURL == nil)
-            }
+        VStack(spacing: 16) {
             HStack {
                 Text("Speed")
+                    .font(.caption)
                 Slider(value: $speed, in: 1...10, step: 0.5)
+                    .tint(CuevoraTheme.primary)
+                Text(speed.formatted(.number.precision(.fractionLength(1))))
+                    .font(.caption.monospacedDigit())
+                    .frame(width: 32, alignment: .trailing)
             }
+            HStack(spacing: 22) {
+                Button(playing ? "Pause Prompt" : "Play Prompt", systemImage: playing ? "pause.fill" : "play.fill") { playing.toggle() }
+                    .labelStyle(.iconOnly)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .accessibilityLabel(playing ? "Pause Prompt" : "Play Prompt")
+                recordButton
+                Button("Switch Camera", systemImage: "arrow.triangle.2.circlepath") { capture.switchCamera() }
+                    .labelStyle(.iconOnly)
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .disabled(capture.phase == .recording || isCountdown)
+                    .accessibilityLabel("Switch Camera")
+            }
+            HStack(spacing: 16) {
+                Button(split ? "Overlay" : "Split View", systemImage: split ? "rectangle.inset.filled" : "rectangle.split.2x1") { split.toggle() }
+                Button("Share", systemImage: "square.and.arrow.up") { showShare = true }
+                    .disabled(capture.previewURL == nil)
+                Button("Save to Photos", systemImage: "photo") { capture.saveCurrentToPhotos() }
+                    .disabled(capture.previewURL == nil)
+                Button("Delete Take", systemImage: "trash", role: .destructive) { capture.discard() }
+                    .disabled(capture.previewURL == nil)
+            }
+            .labelStyle(.iconOnly)
+            .font(.body)
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.bordered)
-        .font(.caption)
         .foregroundStyle(.white)
-        .padding()
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+    }
+
+    private var recordButton: some View {
+        Button {
+            if capture.phase == .recording || isCountdown {
+                if isCountdown { capture.cancelCountdown() } else { playing = false; capture.stop() }
+            } else {
+                capture.requestStart(countdown: preferences.countdownDuration, quality: preferences.recordingQuality)
+            }
+        } label: {
+            ZStack {
+                Circle().strokeBorder(.white, lineWidth: 4)
+                if capture.phase == .recording {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(CuevoraTheme.amber)
+                        .padding(22)
+                } else {
+                    Circle().fill(CuevoraTheme.amber).padding(8)
+                }
+            }
+            .frame(width: 72, height: 72)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(capture.phase == .recording ? "Stop" : "Record")
+        .accessibilityHint("Asks for the camera and microphone only when you start.")
     }
 
     private var isCountdown: Bool {

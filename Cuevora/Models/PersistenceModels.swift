@@ -11,6 +11,8 @@ final class Script {
     var tags: [String]
     var markers: [Int]
     var highlights: [Int]
+    var readingProgress: Double = 0
+    var pinned: Bool = false
     /// Earlier builds stored revision text without timestamps. New saves use `snapshots`.
     var revisions: [String]
     @Relationship(deleteRule: .cascade, inverse: \RevisionSnapshot.script)
@@ -29,6 +31,8 @@ final class Script {
         tags = []
         markers = []
         highlights = []
+        readingProgress = 0
+        pinned = false
         revisions = []
         snapshots = []
         rehearsals = []

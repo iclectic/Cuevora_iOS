@@ -6,7 +6,7 @@ Reference: [iclectic/Cuevora](https://github.com/iclectic/Cuevora), commit `aedc
 
 - `src/index.css` defines light background HSL 0/0%/97%, dark background 244/47%/8%, light primary 263/83%/58%, dark primary 255/93%/76%, and amber brand 38/93%/50% (dark 55%). The native asset catalog carries the background and primary colors in both appearances.
 - `public/icons/icon-512.svg` is a purple C with amber script lines and play symbol on a dark indigo rounded square. The checked-in PNG is used for the in-app logo. The 1024-pixel app icon is rendered from the SVG with an opaque indigo background; confirm its appearance on devices before release.
-- The reference uses system font stacks and 44-point minimum touch targets. The native shell uses system fonts and native layout.
+- The iOS app keeps the Cuevora name, the purple primary, the indigo background and the amber recording accent. Its layout is a native Apple interface: tab bar, inset lists, a writing canvas, and material playback and camera controls. It is not a copy of the Android screens.
 - `TRADEMARKS.md` identifies Cuevora marks as the owner's and reserves use of them. This implementation follows the owner's request to reuse the identity; confirm ownership and App Store branding before distribution. Source is Apache-2.0; preserve applicable notices if source code is incorporated.
 
 ## Feature baseline
@@ -28,10 +28,10 @@ Reference: [iclectic/Cuevora](https://github.com/iclectic/Cuevora), commit `aedc
 
 ## Remaining validation
 
-Run the Android app and compare actual phone screens and interactions with the iOS implementation, including fonts, icon rendering and accessibility. Source inspection alone cannot establish behavior on hardware. Test light/dark contrast and large text in the native app. Verify identity, recordings, speech and backup fixtures on real devices as their implementation units are delivered.
+The iOS interface is its own design. Do not treat a visual match with the Android app as a release check. On device, walk the script, prompter, recording and settings flows in light and dark, with large text and rotation, and confirm the brand colours and icon still read clearly.
 
 ## Foundation verification
 
 The project targets iOS and iPadOS 17 or later and uses native SwiftUI navigation and system fonts. A simulator-target build is available with Xcode 16.4; App Store submission requires a currently accepted Xcode and SDK. On 2026-11-17, color-token calculations using the reference HSL values gave contrast ratios of 5.24:1 for light primary on background and 7.00:1 for dark primary on background. Reference foreground/background pairs measured 16.73:1 and 17.05:1 respectively. These calculations do not replace contrast checks on rendered controls, camera overlays, different accessibility settings or every color combination.
 
-The iOS app now includes the library, editor, prompter, recording, rehearsal, settings and backup flows. A screen-by-screen comparison against a running Android build, and the device rows in `docs/qa/`, are still open. Logic tests cover backup fixtures, playback, recording decisions and speech fallback. They do not replace that comparison.
+The iOS app includes the library, editor, prompter, recording, rehearsal, settings and backup flows, laid out as an Apple app rather than a port of the Android screens. The device rows in `docs/qa/` are still open. Logic tests cover backup fixtures, playback, recording decisions and speech fallback.
