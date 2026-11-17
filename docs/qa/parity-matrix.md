@@ -1,0 +1,23 @@
+# Parity matrix
+
+Reference: iclectic/Cuevora `aedcd6610132c40a16e6e487d44e8d39ba55b529`. This is a source and implementation record. It is not a completed device comparison.
+
+| Reference capability | iOS behaviour | Evidence | Release note |
+| --- | --- | --- | --- |
+| Library search, tags, sort, compact list, duplicate, delete with undo | Implemented with a native list, context menu and split view. | `LibraryView.swift` | Undo lasts until the next library change replaces the snackbar. |
+| Editor autosave, tags, statistics, text import and export, ten revisions | Revisions are timestamped snapshots, capped at ten. Older string-only revisions are promoted once. | `ScriptEditor.swift`, `PersistenceTests` | Statistics are labelled estimates. |
+| Markers and highlights | Kept in the model, backup and prompter. No separate marker editor, matching the reference, which draws them but does not edit them in the audited pages. | `PromptText`, player | |
+| JSON backup | iOS version 2 export. iOS version 1 and Android version 1 import. Validation failure does not change stored scripts. Import offers copy or replace. | `BackupCodec.swift`, `CuevoraTests/Fixtures/android-backup-v1.json` | Recordings are excluded. Android compatibility is this schema only. |
+| Prompt speed, themes, focus, mirror, countdown, type size, spacing | Speed uses the reference 1...10 scale at 20 points per second. Four theme colours match the reference hex values. | `PlaybackEngineTests` | Frame interval is clamped to 0.1s so a stalled callback cannot jump the script. |
+| Vertical swipe for speed | Not used. Vertical swipes fight scrolling and the system gesture. Speed uses the slider, presets, stepper keys and voice. | Player options text | Equivalent controls, called out here for review. |
+| Tap zones, double-tap, pinch | Left and right skip 10 percent, centre or double-tap plays or pauses, pinch changes text size. Buttons do the same. | `PromptScrollView.swift` | |
+| Hardware keyboard | Space, arrows, M, F, R and Escape. Arrows left and right skip about five seconds at the current speed. | `PlayerView.swift` | Needs a keyboard pass on device. |
+| Session resume | The last script and progress are stored and offered as Resume. | `AppPreferences` | One position is stored, not a position per script. |
+| Camera overlay, split view, switch camera, preview, share, save to Photos | Implemented. The script is an overlay and is not written into the file. Camera switching is refused during a take. | `CaptureSessionController.swift`, `RecordingStateTests` | No physical-device recording has been run in this environment. See `recording-device-matrix.md`. |
+| Voice commands, adaptive speed, rehearsal report | Opt-in, on-device only. If on-device recognition is unavailable, the fixed speed remains and the screen says why. Speech is stopped while recording. Reports are saved only when requested. | `SpeechFallbackTests`, `OnDeviceSpeech.swift` | Thresholds in `speech-evaluation.md` have not been measured. This is an open parity gap for the owner. |
+| Optional Firebase sign-in and email link | Not shipped. The reference enables Firebase only when configured, and email sign-in tells the user it is not enabled. iOS stays in guest mode and says sign-in is not available. | `IdentityPolicy` | Do not describe account sync. Local deletion is the deletion control. |
+| Analytics opt-in | Not shipped. The reference stores the flag and the audited source has no analytics collector. | Settings privacy section | |
+| Files and Share Sheet | Text and backup import/export use the system file pickers. Recordings share through the system share sheet. | Library and recording screens | |
+| App Shortcuts | Create a script, and open the most recent script. Neither shortcut starts the camera or microphone. | `CuevoraShortcuts.swift` | |
+| iCloud sync | Designed and left off. Scripts and settings would be the only future scope, after a separate consent step. Recordings stay local. | `CloudSyncPolicy` | Do not claim sync. |
+| Live collaboration, AI, external display, Watch remote | Not implemented. They are not current Android features in the audited source. | Reference audit | |

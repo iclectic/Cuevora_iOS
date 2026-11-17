@@ -3,56 +3,32 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		0A9146F0A78218D2341DDB42 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E67E14ADD5146D6E81533D3 /* HomeView.swift */; };
-		2AC1973E80A3EC86E54D4E8B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95D21107EC2E56324A678CFA /* Foundation.framework */; };
-		755B6FA31B6737FCE11418C3 /* CuevoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C68A84DA7367611082FA88 /* CuevoraApp.swift */; };
-		A4155FFE2DAF9755A2308986 /* CuevoraTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396734F277EA17067B95628B /* CuevoraTheme.swift */; };
-		CF3B23BE8F31C8DFB2189B7C /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */; };
-		E5D73C5AE93E6DC4D43386EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 023E626F81FDCD03A2DF0F9F /* Assets.xcassets */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
-		023E626F81FDCD03A2DF0F9F /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		396734F277EA17067B95628B /* CuevoraTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CuevoraTheme.swift; path = DesignSystem/CuevoraTheme.swift; sourceTree = "<group>"; };
-		3E67E14ADD5146D6E81533D3 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = App/HomeView.swift; sourceTree = "<group>"; };
 		647AC122E62D7F05264699D6 /* Cuevora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cuevora.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		95D21107EC2E56324A678CFA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlayerView.swift; path = Features/Player/PlayerView.swift; sourceTree = "<group>"; };
-		D9C68A84DA7367611082FA88 /* CuevoraApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CuevoraApp.swift; path = App/CuevoraApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		8E3CDDD8DA89FDB264B5FF91 /* Cuevora */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Cuevora;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B9A27495D763202AD61D21CE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2AC1973E80A3EC86E54D4E8B /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		14E7BDE18EA4E89F36D62C7B /* iOS */ = {
-			isa = PBXGroup;
-			children = (
-				95D21107EC2E56324A678CFA /* Foundation.framework */,
-			);
-			name = iOS;
-			sourceTree = "<group>";
-		};
-		4F21969BA05358C7B82AA7C9 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				14E7BDE18EA4E89F36D62C7B /* iOS */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
 		7E4536F302521ABEFA41358B /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -61,25 +37,11 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		8E3CDDD8DA89FDB264B5FF91 /* Cuevora */ = {
-			isa = PBXGroup;
-			children = (
-				D9C68A84DA7367611082FA88 /* CuevoraApp.swift */,
-				3E67E14ADD5146D6E81533D3 /* HomeView.swift */,
-				396734F277EA17067B95628B /* CuevoraTheme.swift */,
-				023E626F81FDCD03A2DF0F9F /* Assets.xcassets */,
-				AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */,
-			);
-			name = Cuevora;
-			path = Cuevora;
-			sourceTree = "<group>";
-		};
 		BFBAA2E1929DB9AFAA8ABDDA = {
 			isa = PBXGroup;
 			children = (
-				7E4536F302521ABEFA41358B /* Products */,
-				4F21969BA05358C7B82AA7C9 /* Frameworks */,
 				8E3CDDD8DA89FDB264B5FF91 /* Cuevora */,
+				7E4536F302521ABEFA41358B /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -98,7 +60,12 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				8E3CDDD8DA89FDB264B5FF91 /* Cuevora */,
+			);
 			name = Cuevora;
+			packageProductDependencies = (
+			);
 			productName = Cuevora;
 			productReference = 647AC122E62D7F05264699D6 /* Cuevora.app */;
 			productType = "com.apple.product-type.application";
@@ -109,11 +76,17 @@
 		E0D0C8EBA92A03EA4E2B1039 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					B5E6A0B9C91D2361BE95F86E = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
 			};
 			buildConfigurationList = 092F42D30BC6BD41D582A85B /* Build configuration list for PBXProject "Cuevora" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -121,7 +94,7 @@
 				Base,
 			);
 			mainGroup = BFBAA2E1929DB9AFAA8ABDDA;
-			minimizedProjectReferenceProxies = 0;
+			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7E4536F302521ABEFA41358B /* Products */;
 			projectDirPath = "";
@@ -137,7 +110,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E5D73C5AE93E6DC4D43386EE /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -148,10 +120,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				755B6FA31B6737FCE11418C3 /* CuevoraApp.swift in Sources */,
-				0A9146F0A78218D2341DDB42 /* HomeView.swift in Sources */,
-				A4155FFE2DAF9755A2308986 /* CuevoraTheme.swift in Sources */,
-				CF3B23BE8F31C8DFB2189B7C /* PlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -163,15 +131,29 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Primary;
-				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cuevora;
+				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Cuevora uses the camera to preview and record video while you read. The script is not added to the video.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Cuevora uses the microphone to record audio with your video, and for on-device voice commands when you turn them on.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Cuevora adds a video to Photos only when you tap Save to Photos.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cuevora uses on-device speech recognition for optional voice commands and rehearsal estimates. Audio is not sent to Cuevora.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.cuevora.teleprompter.ios;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -182,15 +164,29 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = Primary;
-				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGNING_ALLOWED = YES;
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Cuevora;
+				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Cuevora uses the camera to preview and record video while you read. The script is not added to the video.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Cuevora uses the microphone to record audio with your video, and for on-device voice commands when you turn them on.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Cuevora adds a video to Photos only when you tap Save to Photos.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Cuevora uses on-device speech recognition for optional voice commands and rehearsal estimates. Audio is not sent to Cuevora.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.cuevora.teleprompter.ios;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -201,50 +197,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -255,57 +215,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -327,8 +246,8 @@
 		400BF53E7E352B067A5F5197 /* Build configuration list for PBXNativeTarget "Cuevora" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				3E842BB12F0213388CD6A176 /* Release */,
 				0CDCD33AD129C4FD25BE2808 /* Debug */,
+				3E842BB12F0213388CD6A176 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

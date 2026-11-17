@@ -1,7 +1,9 @@
 # Cuevora for iOS
 
-Native SwiftUI foundation for Cuevora on iPhone and iPad. The early library supports creating, editing and searching locally stored scripts. Prompting, recording, backup and the rest of script management are still in development.
+Native SwiftUI teleprompter for iPhone and iPad. Scripts, settings and recordings stay on the device. There is no account, subscription or sync.
 
-Open `Cuevora.xcodeproj` in Xcode and select the Cuevora scheme. The initial deployment target is iOS 17. A development team and final bundle identifier must be configured for device signing and distribution. Xcode 16.4 builds against the installed iOS 18.5 SDK; use a currently accepted Xcode and SDK for App Store submission.
+Open `Cuevora.xcodeproj` and run the Cuevora scheme. The deployment target is iOS 17. A development team is still required before a device or App Store build can be signed. App Store uploads need a current Xcode and the iOS SDK Apple requires at submission time.
 
-The Android source baseline and feature inventory are in `docs/reference-audit.md`. The implementation plan is in `docs/plans/2026-11-17-feat-cuevora-native-ios-plan.md`.
+`swift test` runs the logic tests for playback, backups, recording decisions, speech fallback and accessibility profiles. Those tests do not need a simulator. Camera, microphone, VoiceOver and thermal behaviour still have to be checked on devices. The matrices in `docs/qa/` say what has and has not been run.
+
+The Android source baseline is commit `aedcd6610132c40a16e6e487d44e8d39ba55b529` of [iclectic/Cuevora](https://github.com/iclectic/Cuevora), described in `docs/reference-audit.md`. The product plan is `docs/plans/2026-11-17-feat-cuevora-native-ios-plan.md`.

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "scripts": [
+    {
+      "id": "android-script-1",
+      "title": "Launch",
+      "content": "Hello café 🎬\nSecond line\nThird line",
+      "tags": ["video", " "],
+      "createdAt": 1700000000000,
+      "updatedAt": 1700001000000,
+      "markers": [0, 2],
+      "highlights": [1],
+      "unknownField": true
+    },
+    {
+      "id": "android-script-1",
+      "title": "Duplicate id",
+      "content": "Second copy",
+      "tags": [],
+      "createdAt": 1700000000000,
+      "updatedAt": 1700001000000,
+      "markers": [],
+      "highlights": []
+    }
+  ],
+  "revisions": [
+    {
+      "id": "rev-1",
+      "scriptId": "android-script-1",
+      "content": "Hello",
+      "timestamp": 1699990000000
+    },
+    {
+      "id": "orphan",
+      "scriptId": "missing",
+      "content": "Dropped",
+      "timestamp": 1699990000000
+    }
+  ],
+  "settings": {
+    "defaultTheme": "studio",
+    "defaultSpeed": 4,
+    "defaultFontSize": 40,
+    "defaultLineSpacing": 1.8,
+    "wpm": 150,
+    "keepScreenAwake": true,
+    "analyticsOptIn": true,
+    "onboardingComplete": true,
+    "mirrorMode": true,
+    "countdownDuration": 5,
+    "focusLineEnabled": false,
+    "colorMode": "dark",
+    "hapticsEnabled": false,
+    "gestureControlsEnabled": true,
+    "voiceControlsEnabled": false,
+    "adaptiveScrollEnabled": false,
+    "accessibilityProfile": "calm-focus",
+    "recordingQuality": "standard",
+    "futureSetting": "ignore-me"
+  },
+  "rehearsalSessions": [],
+  "exportedAt": 1700002000000
+}

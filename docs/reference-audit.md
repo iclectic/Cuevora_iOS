@@ -13,14 +13,14 @@ Reference: [iclectic/Cuevora](https://github.com/iclectic/Cuevora), commit `aedc
 
 | Area | Evidence in reference | Native implementation status |
 | --- | --- | --- |
-| Library | `src/pages/Home.tsx`: search title/content, tag filter, updated/created/alphabetical/length sort, compact/detailed views, refresh, edit, delete/undo and launch player. | Planned U2. |
-| Editor | `src/pages/Editor.tsx`: autosave, tags, word/character counts, read time, text import/export, copy and revision restore. | Planned U2. |
-| Models | `src/types/script.ts`: script IDs, title, content, tags, millisecond timestamps, line-index markers and highlights; revision stores content and timestamp. | Planned U2; preserve markers and highlights in interchange even if no editor UI is found. |
-| Player | `src/pages/Player.tsx`, `src/hooks/use-prompt-playback.ts`, `src/hooks/use-gesture-controls.ts`: adjustable prompting, themes, focus, mirror, countdown, gestures, keyboard and camera access. | Planned U3/U4. Confirm exact device behavior and gesture conflicts. |
-| Recording | `src/pages/RecordMode.tsx`: camera/microphone permission flow, preview, prompting, recording and export. | Planned U4; real device validation required. |
-| Rehearsal and voice | `src/pages/Rehearsal.tsx`, `src/lib/rehearsal-metrics.ts`, `src/lib/adaptive-scroll.ts`, `src/hooks/use-voice-control.ts`: speech-dependent metrics, adaptive cadence and commands. | Planned U6; hardware, locale and capture compatibility are unverified. |
-| Settings and access | `src/pages/Settings.tsx`, `src/lib/accessibility-profiles.ts`: appearance, defaults, recording, inputs, profiles, data and legal controls. | Planned U5. |
-| Identity | `src/lib/auth-context.tsx`: guest mode and conditional Firebase Google/Apple sign-in. Email link explicitly reports that setup is not enabled. `src/lib/sync-service.ts` is a future boundary, not script sync. | Audit account deletion and provider behavior during U8; no sync claims. |
+| Library | `src/pages/Home.tsx`: search title/content, tag filter, updated/created/alphabetical/length sort, compact/detailed views, refresh, edit, delete/undo and launch player. | Implemented in `Cuevora/Features/Library`. Refresh is the system list. Device comparison is still open. |
+| Editor | `src/pages/Editor.tsx`: autosave, tags, word/character counts, read time, text import/export, copy and revision restore. | Implemented. Revisions are timestamped snapshots, capped at ten. |
+| Models | `src/types/script.ts`: script IDs, title, content, tags, millisecond timestamps, line-index markers and highlights; revision stores content and timestamp. | Stored and drawn. Markers and highlights survive Android import. There is no marker editor in the audited Android pages. |
+| Player | `src/pages/Player.tsx`, `src/hooks/use-prompt-playback.ts`, `src/hooks/use-gesture-controls.ts`: adjustable prompting, themes, focus, mirror, countdown, gestures, keyboard and camera access. | Implemented. Vertical speed swipes are replaced by the slider, presets and keyboard because they conflict with scrolling. |
+| Recording | `src/pages/RecordMode.tsx`: camera/microphone permission flow, preview, prompting, recording and export. | Implemented. Camera switching during a take is refused. Physical-device checks are listed and not yet run. |
+| Rehearsal and voice | `src/pages/Rehearsal.tsx`, `src/lib/rehearsal-metrics.ts`, `src/lib/adaptive-scroll.ts`, `src/hooks/use-voice-control.ts`: speech-dependent metrics, adaptive cadence and commands. | Implemented as opt-in on-device recognition with manual fallback. Measurement thresholds are unmet because they have not been run. |
+| Settings and access | `src/pages/Settings.tsx`, `src/lib/accessibility-profiles.ts`: appearance, defaults, recording, inputs, profiles, data and legal controls. | Implemented, including the reference reading profiles. Analytics is omitted because the audited Android source stores the flag and does not send events. |
+| Identity | `src/lib/auth-context.tsx`: guest mode and conditional Firebase Google/Apple sign-in. Email link explicitly reports that setup is not enabled. `src/lib/sync-service.ts` is a future boundary, not script sync. | Guest only. Sign-in is labelled unavailable. Local deletion is the deletion control. iCloud sync is designed and switched off. |
 
 ## Backup and data risks
 
@@ -34,4 +34,4 @@ Run the Android app and compare actual phone screens and interactions with the i
 
 The project targets iOS and iPadOS 17 or later and uses native SwiftUI navigation and system fonts. A simulator-target build is available with Xcode 16.4; App Store submission requires a currently accepted Xcode and SDK. On 2026-11-17, color-token calculations using the reference HSL values gave contrast ratios of 5.24:1 for light primary on background and 7.00:1 for dark primary on background. Reference foreground/background pairs measured 16.73:1 and 17.05:1 respectively. These calculations do not replace contrast checks on rendered controls, camera overlays, different accessibility settings or every color combination.
 
-The iOS library, editor and player are early implementations. Recording and settings screens are not yet implemented, so the complete planned screen-by-screen comparison is not possible. The comparison remains an open acceptance item, not a completed test.
+The iOS app now includes the library, editor, prompter, recording, rehearsal, settings and backup flows. A screen-by-screen comparison against a running Android build, and the device rows in `docs/qa/`, are still open. Logic tests cover backup fixtures, playback, recording decisions and speech fallback. They do not replace that comparison.
