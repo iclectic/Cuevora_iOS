@@ -17,7 +17,7 @@ struct CuevoraShell: View {
         Group {
             if sizeClass == .regular {
                 NavigationSplitView {
-                    List(selection: $section) {
+                    List(selection: sidebarSelection) {
                         Label("Scripts", systemImage: "text.quote").tag(CuevoraSection.scripts)
                         Label("Recordings", systemImage: "video").tag(CuevoraSection.recordings)
                         Label("Settings", systemImage: "gearshape").tag(CuevoraSection.settings)
@@ -51,6 +51,14 @@ struct CuevoraShell: View {
             }
         }
         .tint(CuevoraTheme.primary)
+    }
+
+    /// iOS only accepts an optional list selection. The tab bar keeps a value selected.
+    private var sidebarSelection: Binding<CuevoraSection?> {
+        Binding(
+            get: { section },
+            set: { if let newValue = $0 { section = newValue } }
+        )
     }
 
     @ViewBuilder
