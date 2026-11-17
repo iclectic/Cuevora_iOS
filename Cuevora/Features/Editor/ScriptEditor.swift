@@ -21,43 +21,77 @@ struct ScriptEditor: View {
     @State private var textDocument = TextDocument(text: "")
     @State private var importTextError = false
     @State private var pendingText: String?
+    @State private var showPlayer = false
+    @State private var showRecording = false
+    @State private var showHistory = false
 
     var body: some View {
-        Form {
-            TextField("Title", text: $script.title)
-            TextField("Tags, separated by commas", text: $tagText)
-            Section("Script") {
-                TextEditor(text: $script.content)
-                    .frame(minHeight: 240)
-                    .accessibilityLabel("Script content")
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Title", text: $script.title)
+                    .font(.title.bold())
+                    .accessibilityLabel("Title")
+                TextField("Tags", text: $tagText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Tags, separated by commas")
+                Text(statisticsLine)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
-            Section("Text Files") {
-                Button("Import Text File") { importingText = true }
-                Button("Export Text File") { textDocument = TextDocument(text: script.content); exportingText = true }
-                ShareLink(item: script.content, subject: Text(script.displayTitle)) { Label("Share Text", systemImage: "square.and.arrow.up") }
-            }
-            Section("History") {
-                if orderedSnapshots.isEmpty { Text("No revisions yet").foregroundStyle(.secondary) }
-                ForEach(orderedSnapshots) { snapshot in
-                    Button("Restore \(snapshot.createdAt.formatted(date: .abbreviated, time: .shortened))") { revisionToRestore = snapshot }
-                }
-            }
-            Section("Statistics") {
-                let words = ReadTime.wordCount(script.content)
-                Text("\(words) words")
-                Text("\(script.content.count) characters")
-                Text("Estimated \(ReadTime.clock(Double(ReadTime.seconds(text: script.content, wordsPerMinute: preferences.wordsPerMinute)))) at \(preferences.wordsPerMinute) words per minute")
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+            TextEditor(text: $script.content)
+                .font(.body)
+                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 16)
+                .accessibilityLabel("Script content")
         }
-        .safeAreaInset(edge: .bottom) { Text(saveStatus).font(.caption).foregroundStyle(.secondary).padding(8).accessibilityLabel("Save status \(saveStatus)") }
-        .navigationTitle("Edit Script")
+        .background(CuevoraTheme.background)
+        .navigationTitle("Script")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button("Done") {
-                saveTask?.cancel()
-                if saveChanges() { if !embedded { dismiss() } }
+            if !embedded {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        saveTask?.cancel()
+                        if saveChanges() { dismiss() }
+                    }
+                }
+            }
+            ToolbarItem(placement: .bottomBar) {
+                Text(saveStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Save status \(saveStatus)")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Prompt", systemImage: "play.fill") { showPlayer = true }
+                    .accessibilityLabel("Prompt")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("More", systemImage: "ellipsis.circle") {
+                    Button("Record", systemImage: "video") { showRecording = true }
+                    Button("History", systemImage: "clock.arrow.circlepath") { showHistory = true }
+                    Button("Import Text", systemImage: "square.and.arrow.down") { importingText = true }
+                    Button("Export Text", systemImage: "square.and.arrow.up") {
+                        textDocument = TextDocument(text: script.content)
+                        exportingText = true
+                    }
+                    ShareLink(item: script.content, subject: Text(script.displayTitle)) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                }
             }
         }
+        .fullScreenCover(isPresented: $showPlayer) {
+            PlayerView(script: script, preferences: preferences, initialProgress: preferences.lastScriptUUID == script.identity ? preferences.lastProgress : 0)
+        }
+        .fullScreenCover(isPresented: $showRecording) {
+            RecordingView(script: script, preferences: preferences)
+        }
+        .sheet(isPresented: $showHistory) { historySheet }
         .alert("Unable to Save", isPresented: $saveError) {
             Button("OK", role: .cancel) {}
         } message: { Text("Your changes are still in the editor. Please try again.") }
@@ -98,6 +132,43 @@ struct ScriptEditor: View {
             if scenePhase != .active && saveStatus != "Saved" { saveTask?.cancel(); _ = saveChanges() }
         }
         .interactiveDismissDisabled()
+    }
+
+    private var statisticsLine: String {
+        let words = ReadTime.wordCount(script.content)
+        let wordLabel = words == 1 ? "1 word" : "\(words) words"
+        let estimate = ReadTime.clock(Double(ReadTime.seconds(text: script.content, wordsPerMinute: preferences.wordsPerMinute)))
+        return "\(wordLabel) · \(script.content.count) characters · about \(estimate)"
+    }
+
+    private var historySheet: some View {
+        NavigationStack {
+            Group {
+                if orderedSnapshots.isEmpty {
+                    ContentUnavailableView("No History", systemImage: "clock", description: Text("Earlier versions appear here after you change the script."))
+                } else {
+                    List(orderedSnapshots) { snapshot in
+                        Button {
+                            revisionToRestore = snapshot
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(snapshot.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.body.weight(.semibold))
+                                Text(snapshot.content)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("History")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                Button("Done") { showHistory = false }
+            }
+        }
     }
 
     private var orderedSnapshots: [RevisionSnapshot] {

@@ -16,7 +16,7 @@ private struct RootView: View {
     @Query private var preferences: [AppPreferences]
 
     var body: some View {
-        LibraryView()
+        CuevoraShell()
             .tint(CuevoraTheme.primary)
             .preferredColorScheme(colorScheme)
             .onAppear(perform: ensurePreferences)

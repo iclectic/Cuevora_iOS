@@ -1,6 +1,6 @@
 # Cuevora for iOS
 
-Native SwiftUI teleprompter for iPhone and iPad. Scripts, settings and recordings stay on the device. There is no account, subscription or sync.
+Native SwiftUI teleprompter for iPhone and iPad. It uses Cuevora’s name and colours in an interface built for Apple: Scripts, Recordings and Settings, a writing canvas, and system-style prompter and camera controls. Scripts, settings and recordings stay on the device. There is no account, subscription or sync.
 
 Open `Cuevora.xcodeproj` and run the Cuevora scheme. The deployment target is iOS 17. A development team is still required before a device or App Store build can be signed. App Store uploads need a current Xcode and the iOS SDK Apple requires at submission time.
 

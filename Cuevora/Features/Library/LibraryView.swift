@@ -12,6 +12,7 @@ struct LibraryView: View {
 
     @State private var search = ""
     @State private var selectedID: PersistentIdentifier?
+    @State private var editorID: PersistentIdentifier?
     @State private var playerScript: Script?
     @State private var recordingScript: Script?
     @State private var saveError = false
@@ -24,7 +25,6 @@ struct LibraryView: View {
     @State private var pending: PendingImport?
     @State private var importError: String?
     @State private var backupMessage: String?
-    @State private var showSettings = false
     @State private var showOnboarding = false
 
     private var preferences: AppPreferences? { preferencesList.first }
@@ -45,16 +45,20 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            list
-                .navigationTitle("Cuevora")
-                .searchable(text: $search, prompt: "Search scripts")
-                .toolbar { toolbar }
-        } detail: {
-            if let selectedScript, let preferences {
-                ScriptEditor(script: selectedScript, preferences: preferences, embedded: true)
+        Group {
+            if sizeClass == .regular {
+                NavigationSplitView {
+                    scriptList
+                } detail: {
+                    detail
+                }
             } else {
-                ContentUnavailableView("Select a Script", systemImage: "doc.text", description: Text("Choose a script to edit it. You can prompt or record from the list."))
+                NavigationStack {
+                    scriptList
+                        .navigationDestination(item: $editorID) { id in
+                            editor(for: id)
+                        }
+                }
             }
         }
         .onAppear {
@@ -64,10 +68,7 @@ struct LibraryView: View {
             if preferences?.onboardingComplete == false { showOnboarding = true }
         }
         .onChange(of: scenePhase) { if scenePhase == .active { handleShortcut() } }
-        .sheet(isPresented: $showSettings) {
-            if let preferences { SettingsView(preferences: preferences) }
-        }
-        .sheet(isPresented: $showOnboarding) { onboarding }
+        .fullScreenCover(isPresented: $showOnboarding) { onboarding }
         .fullScreenCover(item: $playerScript) { script in
             if let preferences {
                 PlayerView(script: script, preferences: preferences, initialProgress: preferences.lastScriptUUID == script.identity ? preferences.lastProgress : 0)
@@ -99,36 +100,99 @@ struct LibraryView: View {
         } message: { Text("You can undo this until you leave the library. Recordings already saved are kept.") }
     }
 
+    private var scriptList: some View {
+        list
+            .navigationTitle("Scripts")
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(text: $search, prompt: "Search")
+            .toolbar { toolbar }
+            .scrollContentBackground(.hidden)
+            .background(CuevoraTheme.background)
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if let selectedScript, let preferences {
+            ScriptEditor(script: selectedScript, preferences: preferences, embedded: true)
+        } else {
+            ContentUnavailableView {
+                Label("No Script Selected", systemImage: "text.quote")
+            } description: {
+                Text("Choose a script, or start a new one.")
+            } actions: {
+                Button("New Script") { createScript() }
+                    .buttonStyle(.borderedProminent)
+            }
+            .background(CuevoraTheme.background)
+        }
+    }
+
+    @ViewBuilder
+    private func editor(for id: PersistentIdentifier) -> some View {
+        if let script = scripts.first(where: { $0.persistentModelID == id }), let preferences {
+            ScriptEditor(script: script, preferences: preferences, embedded: false)
+        }
+    }
+
     private var list: some View {
         Group {
             if scripts.isEmpty {
-                ContentUnavailableView("No Scripts Yet", systemImage: "doc.text", description: Text("Create a script to get started. Everything stays on this device."))
+                ContentUnavailableView {
+                    Label("No Scripts", systemImage: "text.quote")
+                } description: {
+                    Text("Write something to read aloud. It stays on this device.")
+                } actions: {
+                    Button("New Script") { createScript() }
+                        .buttonStyle(.borderedProminent)
+                }
             } else if filtered.isEmpty {
                 ContentUnavailableView.search(text: search)
             } else {
                 List(selection: $selectedID) {
                     if let recent = scripts.first(where: { $0.uuid == preferences?.lastScriptUUID }) {
-                        Button("Resume \(recent.displayTitle)") { openPlayer(recent) }
-                            .accessibilityHint("Opens the prompter at the last reading position.")
-                    }
-                    ForEach(filtered) { script in
-                        Button { selectedID = script.persistentModelID } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(script.displayTitle).font(.headline)
-                                if preferences?.compactList != true {
-                                    Text(script.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
-                                    if !script.tags.isEmpty { Text(script.tags.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary) }
+                        Section {
+                            Button { openPlayer(recent) } label: {
+                                HStack(spacing: 16) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Continue")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(CuevoraTheme.primary)
+                                        Text(recent.displayTitle)
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                        Text("Opens the prompter at the last position")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "play.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.white)
+                                        .frame(width: 52, height: 52)
+                                        .background(CuevoraTheme.primary, in: Circle())
                                 }
+                                .padding(.vertical, 6)
                             }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .accessibilityHint("Opens the prompter at the last reading position.")
                         }
-                        .tag(script.persistentModelID)
-                        .swipeActions { Button("Delete", role: .destructive) { scriptToDelete = script } }
-                        .contextMenu {
-                            Button("Prompt", systemImage: "play.fill") { openPlayer(script) }
-                            Button("Record", systemImage: "video") { recordingScript = script }
-                            Button("Duplicate", systemImage: "doc.on.doc") { duplicate(script) }
-                            Button("Delete", systemImage: "trash", role: .destructive) { scriptToDelete = script }
+                    }
+                    Section {
+                        ForEach(filtered) { script in
+                            scriptRow(script)
+                                .tag(script.persistentModelID)
+                                .swipeActions(edge: .leading) {
+                                    Button("Prompt", systemImage: "play.fill") { openPlayer(script) }
+                                        .tint(CuevoraTheme.primary)
+                                }
+                                .swipeActions {
+                                    Button("Delete", role: .destructive) { scriptToDelete = script }
+                                }
+                                .contextMenu {
+                                    Button("Prompt", systemImage: "play.fill") { openPlayer(script) }
+                                    Button("Record", systemImage: "video") { recordingScript = script }
+                                    Button("Duplicate", systemImage: "plus.square.on.square") { duplicate(script) }
+                                    Button("Delete", systemImage: "trash", role: .destructive) { scriptToDelete = script }
+                                }
                         }
                     }
                 }
@@ -141,16 +205,62 @@ struct LibraryView: View {
                     Spacer()
                     Button("Undo") { restore(deleted) }
                 }
-                .padding()
-                .background(.regularMaterial)
+                .font(.subheadline.weight(.semibold))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.horizontal)
+                .padding(.bottom, 8)
             }
         }
     }
 
+    private func scriptRow(_ script: Script) -> some View {
+        HStack(spacing: 12) {
+            Button { openEditor(script) } label: {
+                HStack(spacing: 12) {
+                    ScriptMark(title: script.displayTitle)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(script.displayTitle)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        if preferences?.compactList != true {
+                            Text(scriptSubtitle(script))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if !script.tags.isEmpty {
+                                Text(script.tags.prefix(3).joined(separator: " · "))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+            }
+            .buttonStyle(.plain)
+            Button { openPlayer(script) } label: {
+                Image(systemName: "play.fill")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(CuevoraTheme.primary)
+                    .frame(width: 36, height: 36)
+                    .background(CuevoraTheme.primary.opacity(0.14), in: Circle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Prompt \(script.displayTitle)")
+        }
+    }
+
+    private func scriptSubtitle(_ script: Script) -> String {
+        let words = ReadTime.wordCount(script.content)
+        let wordLabel = words == 1 ? "1 word" : "\(words) words"
+        return "\(script.updatedAt.formatted(.relative(presentation: .named))) · \(wordLabel)"
+    }
+
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Menu("Library", systemImage: "line.3.horizontal.decrease.circle") {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu("Library", systemImage: "ellipsis.circle") {
                 Picker("Sort", selection: sortBinding) {
                     Text("Recently updated").tag(0)
                     Text("Title").tag(1)
@@ -170,10 +280,8 @@ struct LibraryView: View {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Settings", systemImage: "gearshape") { showSettings = true }.accessibilityLabel("Settings")
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button("New Script", systemImage: "plus") { createScript() }.accessibilityLabel("New Script")
+            Button("New Script", systemImage: "square.and.pencil") { createScript() }
+                .accessibilityLabel("New Script")
         }
     }
 
@@ -186,22 +294,42 @@ struct LibraryView: View {
 
     private var onboarding: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Image("CuevoraLogo").resizable().frame(width: 72, height: 72).accessibilityHidden(true)
-                Text("Cuevora keeps scripts on this device.").font(.title2.bold())
-                Text("There is no account and no sync. You can export a backup whenever you want. Camera, microphone, speech and Photos access are requested only for the feature you start.")
-                Text(CloudSyncPolicy.explanation).font(.footnote).foregroundStyle(.secondary)
-                Spacer()
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 28) {
+                        Image("CuevoraLogo")
+                            .resizable()
+                            .frame(width: 72, height: 72)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Cuevora")
+                                .font(.largeTitle.bold())
+                            Text("Read, rehearse and record. Your scripts stay on this iPhone or iPad.")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                        }
+                        VStack(alignment: .leading, spacing: 22) {
+                            WelcomeFeature(systemImage: "text.quote", title: "Scripts", detail: "Write, search and keep a short history of each script.")
+                            WelcomeFeature(systemImage: "play.circle", title: "Prompter", detail: "Scroll at a steady speed, with controls you can see and hear.")
+                            WelcomeFeature(systemImage: "video", title: "Record", detail: "Film yourself while the script stays on screen, not in the video.")
+                            WelcomeFeature(systemImage: "lock", title: "On this device", detail: "No account. Camera, microphone, speech and Photos are asked for only when you use them.")
+                        }
+                    }
+                    .padding(24)
+                }
                 Button("Continue") {
                     preferences?.onboardingComplete = true
                     try? context.save()
                     showOnboarding = false
                 }
                 .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
             }
-            .padding()
-            .navigationTitle("Welcome")
+            .background(CuevoraTheme.background)
         }
     }
 
@@ -210,7 +338,7 @@ struct LibraryView: View {
         context.insert(script)
         do {
             try context.save()
-            selectedID = script.persistentModelID
+            openEditor(script)
         } catch {
             context.delete(script)
             saveError = true
@@ -334,16 +462,22 @@ struct LibraryView: View {
             script.content = text
             context.insert(script)
             try context.save()
-            selectedID = script.persistentModelID
+            openEditor(script)
         } catch {
             importError = "The text file could not be imported. Nothing was changed."
         }
     }
 
+    private func openEditor(_ script: Script) {
+        selectedID = script.persistentModelID
+        editorID = script.persistentModelID
+    }
+
     private func handleShortcut() {
         switch ShortcutInbox.consume() {
         case .createScript: createScript()
-        case .openMostRecent: selectedID = scripts.first?.persistentModelID
+        case .openMostRecent:
+            if let recent = scripts.first { openEditor(recent) }
         case nil: break
         }
     }
@@ -359,22 +493,31 @@ private struct ImportReview: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("What will be imported") {
-                    Text("\(document.scripts.count) scripts from \(sourceName).")
+                Section {
+                    LabeledContent("Scripts", value: "\(document.scripts.count)")
+                    LabeledContent("From", value: sourceName)
                     Text("Recordings are not in this file and will not be changed.")
-                    ForEach(document.notices, id: \.self) { Text($0) }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                if !document.notices.isEmpty {
+                    Section("Notes") {
+                        ForEach(document.notices, id: \.self) { Text($0) }
+                    }
                 }
             }
-            .navigationTitle("Import Backup")
+            .navigationTitle("Import")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button("Cancel") { dismiss() }
-            }
-            .safeAreaInset(edge: .bottom) {
-                VStack {
-                    Button("Import as Copies") { onCopy(); dismiss() }.buttonStyle(.borderedProminent).frame(maxWidth: .infinity, minHeight: 44)
-                    Button("Replace Scripts", role: .destructive) { confirmReplace = true }.frame(maxWidth: .infinity, minHeight: 44)
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
-                .padding()
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Add Copies") { onCopy(); dismiss() }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Replace Scripts", role: .destructive) { confirmReplace = true }
+                }
             }
             .confirmationDialog("Replace the scripts on this device?", isPresented: $confirmReplace, titleVisibility: .visible) {
                 Button("Replace Scripts", role: .destructive) { onReplace(); dismiss() }

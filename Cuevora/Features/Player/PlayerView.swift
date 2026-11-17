@@ -64,82 +64,56 @@ struct PlayerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                ZStack {
-                    PromptScroll(
-                        text: script.content,
-                        markers: script.markers,
-                        highlights: script.highlights,
-                        playing: playing,
-                        speed: speed,
-                        fontSize: effectiveFont,
-                        lineSpacing: effectiveSpacing,
-                        theme: theme,
-                        mirrored: mirror,
-                        gesturesEnabled: preferences.gestureControlsEnabled && countdown == nil,
-                        transparentBackground: false,
-                        resetToken: resetToken,
-                        seekToken: seekToken,
-                        seekProgress: seekProgress,
-                        nudgeToken: nudgeToken,
-                        nudgePixels: nudgePixels,
-                        progress: $progress,
-                        elapsed: $elapsed,
-                        remaining: $remaining,
-                        onUserPause: pause,
-                        onCompleted: pause,
-                        onTapZone: handleTap,
-                        onDoubleTap: togglePlay,
-                        onPinch: { larger in
-                            fontSize = min(72, max(16, fontSize + (larger ? 2 : -2)))
-                            CuevoraHaptics.selection(enabled: preferences.hapticsEnabled)
-                        }
-                    )
-                    if focus {
-                        Rectangle()
-                            .fill(theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
-                            .frame(height: 48)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
+            ZStack {
+                PromptScroll(
+                    text: script.content,
+                    markers: script.markers,
+                    highlights: script.highlights,
+                    playing: playing,
+                    speed: speed,
+                    fontSize: effectiveFont,
+                    lineSpacing: effectiveSpacing,
+                    theme: theme,
+                    mirrored: mirror,
+                    gesturesEnabled: preferences.gestureControlsEnabled && countdown == nil,
+                    transparentBackground: false,
+                    resetToken: resetToken,
+                    seekToken: seekToken,
+                    seekProgress: seekProgress,
+                    nudgeToken: nudgeToken,
+                    nudgePixels: nudgePixels,
+                    progress: $progress,
+                    elapsed: $elapsed,
+                    remaining: $remaining,
+                    onUserPause: pause,
+                    onCompleted: pause,
+                    onTapZone: handleTap,
+                    onDoubleTap: togglePlay,
+                    onPinch: { larger in
+                        fontSize = min(72, max(16, fontSize + (larger ? 2 : -2)))
+                        CuevoraHaptics.selection(enabled: preferences.hapticsEnabled)
                     }
-                    if let countdown {
-                        Text("\(countdown)")
-                            .font(.system(size: 80, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(30)
-                            .background(.black.opacity(0.75), in: Circle())
-                            .accessibilityLabel("Starting in \(countdown)")
-                    }
+                )
+                if focus {
+                    Rectangle()
+                        .fill(theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
+                        .frame(height: 2)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
-                ProgressView(value: progress)
-                    .accessibilityLabel("Estimated progress")
-                    .accessibilityValue("\(Int(progress * 100)) percent")
-                HStack {
-                    Text("Elapsed \(ReadTime.clock(elapsed))")
-                    Spacer()
-                    Text("Estimated \(ReadTime.clock(remaining)) remaining")
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .accessibilityElement(children: .combine)
-                controls
-                if !simpleControls { sliders }
-                if let message = speech.message, voiceOn {
-                    Text(message).font(.caption).foregroundStyle(.secondary).padding(.horizontal)
+                if let countdown {
+                    Text("\(countdown)")
+                        .font(.system(size: 88, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(width: 140, height: 140)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .accessibilityLabel("Starting in \(countdown)")
                 }
             }
-            .background(Color.black)
-            .navigationTitle(script.displayTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Record", systemImage: "video") { openRecording() }
-                        .accessibilityLabel("Record")
-                }
-            }
-            .safeAreaInset(edge: .bottom) { KeyCommandHost(onKey: handleKey).frame(width: 0, height: 0) }
+            .overlay(alignment: .top) { playerChrome }
+            .safeAreaInset(edge: .bottom, spacing: 0) { transport }
+            .background { KeyCommandHost(onKey: handleKey).frame(width: 0, height: 0) }
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 seekProgress = initialProgress
                 seekToken += 1
@@ -164,35 +138,86 @@ struct PlayerView: View {
         }
     }
 
-    private var controls: some View {
-        HStack {
-            controlButton("Reset", systemImage: "backward.end") { reset() }
-            controlButton("Back 10 percent", systemImage: "backward.fill") { seek(by: -0.1) }
-            controlButton(playing || countdown != nil ? "Pause" : "Play", systemImage: playing || countdown != nil ? "pause.fill" : "play.fill") { togglePlay() }
-            controlButton("Forward 10 percent", systemImage: "forward.fill") { seek(by: 0.1) }
-            Menu("Options", systemImage: "slider.horizontal.3") {
-                Toggle("Mirror Text", isOn: $mirror)
-                Toggle("Focus Guide", isOn: $focus)
-                Picker("Theme", selection: $theme) {
-                    ForEach(PromptTheme.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                Picker("Countdown", selection: $countdownLength) {
-                    Text("Off").tag(0); Text("3 seconds").tag(3); Text("5 seconds").tag(5); Text("10 seconds").tag(10)
-                }
-                Button("Rehearse") { showRehearsal = true }
-                Button(voiceOn ? "Stop Voice Commands" : "Start Voice Commands") { toggleVoice() }
-                Text("Tap the left or right side to skip. Double-tap to play or pause. Pinch to change text size. Arrow keys skip about five seconds. The script is not added to a recording.")
-            }
-            .frame(minWidth: 44, minHeight: 44)
+    private var ink: Color { theme == .light ? .black : .white }
+
+    private var playerChrome: some View {
+        HStack(spacing: 12) {
+            roundButton("Done", systemImage: "xmark") { dismiss() }
+            Text(script.displayTitle)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+            roundButton("Record", systemImage: "video.fill") { openRecording() }
         }
+        .foregroundStyle(ink)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+    }
+
+    private var transport: some View {
+        VStack(spacing: 14) {
+            ProgressView(value: progress)
+                .tint(CuevoraTheme.primary)
+                .accessibilityLabel("Estimated progress")
+                .accessibilityValue("\(Int(progress * 100)) percent")
+            HStack {
+                Text(ReadTime.clock(elapsed))
+                Spacer()
+                Text("About \(ReadTime.clock(remaining)) left")
+            }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .combine)
+            HStack(spacing: 18) {
+                roundButton("Reset", systemImage: "backward.end.fill") { reset() }
+                roundButton("Back 10 percent", systemImage: "gobackward.10") { seek(by: -0.1) }
+                Button(playing || countdown != nil ? "Pause" : "Play", systemImage: playing || countdown != nil ? "pause.fill" : "play.fill") { togglePlay() }
+                    .font(.title)
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.white)
+                    .frame(width: 64, height: 64)
+                    .background(CuevoraTheme.primary, in: Circle())
+                    .accessibilityLabel(playing || countdown != nil ? "Pause" : "Play")
+                roundButton("Forward 10 percent", systemImage: "goforward.10") { seek(by: 0.1) }
+                optionsMenu
+            }
+            if !simpleControls { sliders }
+            if let message = speech.message, voiceOn {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+        .foregroundStyle(ink)
+    }
+
+    private var optionsMenu: some View {
+        Menu("Options", systemImage: "ellipsis") {
+            Toggle("Mirror Text", isOn: $mirror)
+            Toggle("Focus Guide", isOn: $focus)
+            Picker("Theme", selection: $theme) {
+                ForEach(PromptTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Picker("Countdown", selection: $countdownLength) {
+                Text("Off").tag(0); Text("3 seconds").tag(3); Text("5 seconds").tag(5); Text("10 seconds").tag(10)
+            }
+            Button("Rehearse", systemImage: "waveform") { showRehearsal = true }
+            Button(voiceOn ? "Stop Voice Commands" : "Start Voice Commands") { toggleVoice() }
+            Text("Tap the sides to skip. Double-tap to play or pause. Pinch to change text size.")
+        }
+        .font(.title3)
         .labelStyle(.iconOnly)
-        .font(.title2)
-        .padding(.horizontal)
-        .foregroundStyle(.white)
+        .frame(width: 44, height: 44)
+        .background(.ultraThinMaterial, in: Circle())
     }
 
     private var sliders: some View {
-        VStack {
+        VStack(spacing: 10) {
             HStack {
                 Text("Speed")
                 Slider(value: $speed, in: 1...10, step: 0.5, onEditingChanged: { editing in
@@ -202,35 +227,46 @@ struct PlayerView: View {
                     }
                 })
                 Text(speed.formatted(.number.precision(.fractionLength(1))))
+                    .monospacedDigit()
+                    .frame(width: 32, alignment: .trailing)
             }
             .accessibilityElement(children: .combine)
-            HStack {
+            HStack(spacing: 8) {
                 ForEach(PlaybackEngine.presets, id: \.self) { preset in
-                    Button(preset.formatted(.number.precision(.fractionLength(0)))) { speed = preset; manualOverrideUntil = Date().addingTimeInterval(8) }
-                        .buttonStyle(.bordered)
-                        .accessibilityLabel("Speed \(Int(preset))")
+                    Button(preset.formatted(.number.precision(.fractionLength(0)))) {
+                        speed = preset
+                        manualOverrideUntil = Date().addingTimeInterval(8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(speed == preset ? CuevoraTheme.primary : .secondary)
+                    .accessibilityLabel("Speed \(Int(preset))")
                 }
-                Text(speedNote).foregroundStyle(.secondary)
+                Text(speedNote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             HStack {
-                Text("Text size")
+                Text("Text")
                 Slider(value: $fontSize, in: 16...72, step: 1)
-                Text("\(Int(fontSize))")
+                Text("\(Int(fontSize))").monospacedDigit().frame(width: 32, alignment: .trailing)
             }
             HStack {
-                Text("Line spacing")
+                Text("Spacing")
                 Slider(value: $lineSpacing, in: 1...3, step: 0.1)
                 Text(lineSpacing.formatted(.number.precision(.fractionLength(1))))
+                    .monospacedDigit()
+                    .frame(width: 32, alignment: .trailing)
             }
         }
         .font(.caption)
-        .foregroundStyle(.white)
-        .padding([.horizontal, .bottom])
     }
 
-    private func controlButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func roundButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(title, systemImage: systemImage, action: action)
-            .frame(minWidth: 44, minHeight: 44)
+            .labelStyle(.iconOnly)
+            .font(.body.weight(.semibold))
+            .frame(width: 44, height: 44)
+            .background(.ultraThinMaterial, in: Circle())
             .accessibilityLabel(title)
     }
 

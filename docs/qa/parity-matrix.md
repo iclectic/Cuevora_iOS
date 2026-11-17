@@ -1,6 +1,6 @@
 # Parity matrix
 
-Reference: iclectic/Cuevora `aedcd6610132c40a16e6e487d44e8d39ba55b529`. This is a source and implementation record. It is not a completed device comparison.
+Reference: iclectic/Cuevora `aedcd6610132c40a16e6e487d44e8d39ba55b529`. This records which behaviours the iOS app includes. The screens themselves are a native Apple design and are not meant to match the Android layout.
 
 | Reference capability | iOS behaviour | Evidence | Release note |
 | --- | --- | --- | --- |
