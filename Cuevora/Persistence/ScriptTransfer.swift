@@ -7,8 +7,9 @@ enum ScriptTransfer {
         let revisions = stored.isEmpty
             ? script.revisions.map { PortableRevision(content: $0, timestamp: script.updatedAt) }
             : stored.map { PortableRevision(content: $0.content, timestamp: $0.createdAt) }
+        if script.externalID.isEmpty { script.externalID = script.identity.uuidString }
         return PortableScript(
-            sourceID: script.identity.uuidString,
+            sourceID: script.externalID,
             title: script.title,
             content: script.content,
             tags: script.tags,
@@ -23,6 +24,10 @@ enum ScriptTransfer {
     @discardableResult
     static func insert(_ portable: PortableScript, into context: ModelContext) -> Script {
         let script = Script()
+        if let sourceID = portable.sourceID, let uuid = UUID(uuidString: sourceID) {
+            script.uuid = uuid
+        }
+        script.externalID = portable.sourceID.flatMap { $0.isEmpty ? nil : $0 } ?? script.identity.uuidString
         script.title = portable.title
         script.content = portable.content
         script.tags = portable.tags
@@ -38,6 +43,42 @@ enum ScriptTransfer {
             context.insert(snapshot)
         }
         return script
+    }
+
+    @discardableResult
+    static func insert(_ stored: StoredScript, into context: ModelContext) -> Script {
+        let script = insert(stored.script, into: context)
+        if let uuid = UUID(uuidString: stored.id) { script.uuid = uuid }
+        script.externalID = stored.script.sourceID.flatMap { $0.isEmpty ? nil : $0 } ?? stored.id
+        script.readingProgress = stored.readingProgress
+        script.pinned = stored.pinned
+        return script
+    }
+
+    static func apply(_ stored: StoredScript, to script: Script, in context: ModelContext) {
+        if let uuid = UUID(uuidString: stored.id) { script.uuid = uuid }
+        script.externalID = stored.script.sourceID.flatMap { $0.isEmpty ? nil : $0 } ?? stored.id
+        script.title = stored.script.title
+        script.content = stored.script.content
+        script.tags = stored.script.tags
+        script.markers = stored.script.markers
+        script.highlights = stored.script.highlights
+        script.createdAt = stored.script.createdAt
+        script.updatedAt = stored.script.updatedAt
+        script.readingProgress = stored.readingProgress
+        script.pinned = stored.pinned
+        let desired = Array(stored.script.revisions.sorted { $0.timestamp > $1.timestamp }.prefix(BackupCodec.maxRevisions))
+        let current = script.snapshots.sorted { $0.createdAt > $1.createdAt }
+        let same = current.count == desired.count && zip(current, desired).allSatisfy { $0.content == $1.content && $0.createdAt == $1.timestamp }
+        if !same {
+            for snapshot in script.snapshots { context.delete(snapshot) }
+            for revision in desired {
+                let snapshot = RevisionSnapshot(content: revision.content, createdAt: revision.timestamp)
+                snapshot.script = script
+                context.insert(snapshot)
+            }
+        }
+        script.revisions = []
     }
 
     static func promoteLegacyRevisions(for script: Script, in context: ModelContext) {
