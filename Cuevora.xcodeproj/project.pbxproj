@@ -11,6 +11,7 @@
 		2AC1973E80A3EC86E54D4E8B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95D21107EC2E56324A678CFA /* Foundation.framework */; };
 		755B6FA31B6737FCE11418C3 /* CuevoraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C68A84DA7367611082FA88 /* CuevoraApp.swift */; };
 		A4155FFE2DAF9755A2308986 /* CuevoraTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396734F277EA17067B95628B /* CuevoraTheme.swift */; };
+		CF3B23BE8F31C8DFB2189B7C /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */; };
 		E5D73C5AE93E6DC4D43386EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 023E626F81FDCD03A2DF0F9F /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -20,6 +21,7 @@
 		3E67E14ADD5146D6E81533D3 /* HomeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomeView.swift; path = App/HomeView.swift; sourceTree = "<group>"; };
 		647AC122E62D7F05264699D6 /* Cuevora.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cuevora.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95D21107EC2E56324A678CFA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlayerView.swift; path = Features/Player/PlayerView.swift; sourceTree = "<group>"; };
 		D9C68A84DA7367611082FA88 /* CuevoraApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CuevoraApp.swift; path = App/CuevoraApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -66,6 +68,7 @@
 				3E67E14ADD5146D6E81533D3 /* HomeView.swift */,
 				396734F277EA17067B95628B /* CuevoraTheme.swift */,
 				023E626F81FDCD03A2DF0F9F /* Assets.xcassets */,
+				AA346E2C40BCC5C5C42BBC2F /* PlayerView.swift */,
 			);
 			name = Cuevora;
 			path = Cuevora;
@@ -148,6 +151,7 @@
 				755B6FA31B6737FCE11418C3 /* CuevoraApp.swift in Sources */,
 				0A9146F0A78218D2341DDB42 /* HomeView.swift in Sources */,
 				A4155FFE2DAF9755A2308986 /* CuevoraTheme.swift in Sources */,
+				CF3B23BE8F31C8DFB2189B7C /* PlayerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

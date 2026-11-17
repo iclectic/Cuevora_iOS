@@ -5,7 +5,7 @@ Reference: [iclectic/Cuevora](https://github.com/iclectic/Cuevora), commit `aedc
 ## Brand
 
 - `src/index.css` defines light background HSL 0/0%/97%, dark background 244/47%/8%, light primary 263/83%/58%, dark primary 255/93%/76%, and amber brand 38/93%/50% (dark 55%). The native asset catalog carries the background and primary colors in both appearances.
-- `public/icons/icon-512.svg` is a purple C with amber script lines and play symbol on a dark indigo rounded square. The checked-in PNG is used for the foundation logo and provisional app icon. The 1024-pixel icon is enlarged from the 512-pixel reference and needs a full-resolution export and visual review before release.
+- `public/icons/icon-512.svg` is a purple C with amber script lines and play symbol on a dark indigo rounded square. The checked-in PNG is used for the in-app logo. The 1024-pixel app icon is rendered from the SVG with an opaque indigo background; confirm its appearance on devices before release.
 - The reference uses system font stacks and 44-point minimum touch targets. The native shell uses system fonts and native layout.
 - `TRADEMARKS.md` identifies Cuevora marks as the owner's and reserves use of them. This implementation follows the owner's request to reuse the identity; confirm ownership and App Store branding before distribution. Source is Apache-2.0; preserve applicable notices if source code is incorporated.
 
@@ -29,3 +29,9 @@ Reference: [iclectic/Cuevora](https://github.com/iclectic/Cuevora), commit `aedc
 ## Remaining validation
 
 Run the Android app and compare actual phone screens and interactions with the iOS implementation, including fonts, icon rendering and accessibility. Source inspection alone cannot establish behavior on hardware. Test light/dark contrast and large text in the native app. Verify identity, recordings, speech and backup fixtures on real devices as their implementation units are delivered.
+
+## Foundation verification
+
+The project targets iOS and iPadOS 17 or later and uses native SwiftUI navigation and system fonts. A simulator-target build is available with Xcode 16.4; App Store submission requires a currently accepted Xcode and SDK. On 2026-11-17, color-token calculations using the reference HSL values gave contrast ratios of 5.24:1 for light primary on background and 7.00:1 for dark primary on background. Reference foreground/background pairs measured 16.73:1 and 17.05:1 respectively. These calculations do not replace contrast checks on rendered controls, camera overlays, different accessibility settings or every color combination.
+
+The iOS library, editor and player are early implementations. Recording and settings screens are not yet implemented, so the complete planned screen-by-screen comparison is not possible. The comparison remains an open acceptance item, not a completed test.

@@ -7,6 +7,7 @@ struct HomeView: View {
     @Query(sort: \Script.updatedAt, order: .reverse) private var scripts: [Script]
     @State private var search = ""
     @State private var selectedScript: Script?
+    @State private var playerScript: Script?
     @State private var saveError = false
     @State private var scriptToDelete: Script?
     @State private var deleted: ScriptBackup?
@@ -55,6 +56,7 @@ struct HomeView: View {
                             Button("Delete", role: .destructive) { scriptToDelete = script }
                         }
                         .contextMenu {
+                            Button("Prompt", systemImage: "play.fill") { playerScript = script }
                             Button("Duplicate", systemImage: "doc.on.doc") {
                                 let copy = Script()
                                 ScriptBackup(script).apply(to: copy)
@@ -158,6 +160,7 @@ struct HomeView: View {
                 Button("OK", role: .cancel) { backupMessage = nil }
             } message: { Text(backupMessage ?? "") }
             .sheet(item: $selectedScript) { ScriptEditor(script: $0) }
+            .fullScreenCover(item: $playerScript) { PlayerView(script: $0) }
             .alert("Unable to Save Changes", isPresented: $saveError) {
                 Button("OK", role: .cancel) { }
             } message: { Text("Please try again.") }
