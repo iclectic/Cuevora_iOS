@@ -12,14 +12,7 @@ struct PlayerView: View {
     var initialProgress: Double
 
     @StateObject private var speech = OnDeviceSpeech()
-    @State private var playing = false
-    @State private var speed: Double
-    @State private var fontSize: Double
-    @State private var lineSpacing: Double
-    @State private var mirror: Bool
-    @State private var focus: Bool
-    @State private var theme: PromptTheme
-    @State private var countdownLength: Int
+    @State private var session: PlayerSession
     @State private var progress = 0.0
     @State private var elapsed = 0.0
     @State private var remaining = 0.0
@@ -28,7 +21,6 @@ struct PlayerView: View {
     @State private var seekProgress = 0.0
     @State private var nudgeToken = 0
     @State private var nudgePixels = 0.0
-    @State private var countdown: Int?
     @State private var countdownTask: Task<Void, Never>?
     @State private var manualOverrideUntil = Date.distantPast
     @State private var speedNote = "Fixed speed"
@@ -42,13 +34,16 @@ struct PlayerView: View {
         self.script = script
         self.preferences = preferences
         self.initialProgress = initialProgress
-        _speed = State(initialValue: preferences.defaultSpeed)
-        _fontSize = State(initialValue: preferences.defaultFontSize)
-        _lineSpacing = State(initialValue: preferences.defaultLineSpacing)
-        _mirror = State(initialValue: preferences.mirrorMode)
-        _focus = State(initialValue: preferences.focusLineEnabled)
-        _theme = State(initialValue: preferences.theme)
-        _countdownLength = State(initialValue: preferences.countdownDuration)
+        _session = State(initialValue: PlayerSession(
+            speed: preferences.defaultSpeed,
+            countdownLength: preferences.countdownDuration,
+            mirror: preferences.mirrorMode,
+            focus: preferences.focusLineEnabled,
+            fontSize: preferences.defaultFontSize,
+            lineSpacing: preferences.defaultLineSpacing,
+            theme: preferences.theme,
+            keepScreenAwake: preferences.keepScreenAwake
+        ))
         _voiceOn = State(initialValue: preferences.voiceControlsEnabled)
     }
 
@@ -56,11 +51,9 @@ struct PlayerView: View {
     private var reducePlayerMotion: Bool { reduceMotion || profile.prefersReducedMotion }
     private var simpleControls: Bool { profile.simplifiesControls }
     private var effectiveFont: Double {
-        var size = ReadingProfileStyle.fontSize(fontSize, profile: profile)
-        if typeSize.isAccessibilitySize { size = max(size, ReadingProfile.lowVision.minimumFontSize) }
-        return size
+        PromptTypography.fontSize(base: session.fontSize, profile: profile, accessibilitySize: typeSize.isAccessibilitySize)
     }
-    private var effectiveSpacing: Double { ReadingProfileStyle.lineSpacing(lineSpacing, profile: profile) }
+    private var effectiveSpacing: Double { PromptTypography.lineSpacing(base: session.lineSpacing, profile: profile) }
 
     var body: some View {
         NavigationStack {
@@ -69,13 +62,13 @@ struct PlayerView: View {
                     text: script.content,
                     markers: script.markers,
                     highlights: script.highlights,
-                    playing: playing,
-                    speed: speed,
+                    playing: session.playing,
+                    speed: session.speed,
                     fontSize: effectiveFont,
                     lineSpacing: effectiveSpacing,
-                    theme: theme,
-                    mirrored: mirror,
-                    gesturesEnabled: preferences.gestureControlsEnabled && countdown == nil,
+                    theme: session.theme,
+                    mirrored: session.mirror,
+                    gesturesEnabled: preferences.gestureControlsEnabled && session.countdownValue == nil,
                     transparentBackground: false,
                     resetToken: resetToken,
                     seekToken: seekToken,
@@ -86,22 +79,25 @@ struct PlayerView: View {
                     elapsed: $elapsed,
                     remaining: $remaining,
                     onUserPause: pause,
-                    onCompleted: pause,
+                    onCompleted: {
+                        session.finish()
+                        updateAwake()
+                    },
                     onTapZone: handleTap,
                     onDoubleTap: togglePlay,
                     onPinch: { larger in
-                        fontSize = min(72, max(16, fontSize + (larger ? 2 : -2)))
+                        session.fontSize = min(72, max(16, session.fontSize + (larger ? 2 : -2)))
                         CuevoraHaptics.selection(enabled: preferences.hapticsEnabled)
                     }
                 )
-                if focus {
+                if session.focus {
                     Rectangle()
-                        .fill(theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
+                        .fill(session.theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
                         .frame(height: UIAccessibility.isDarkerSystemColorsEnabled || profile.prefersHighContrast ? 4 : 2)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
-                if let countdown {
+                if let countdown = session.countdownValue {
                     Text("\(countdown)")
                         .font(.system(size: 88, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -125,8 +121,13 @@ struct PlayerView: View {
                 releaseAwake()
                 saveProgress()
             }
-            .onChange(of: scenePhase) { if scenePhase != .active { pause() } }
-            .onChange(of: playing) { updateAwake() }
+            .onChange(of: scenePhase) {
+                if scenePhase != .active {
+                    pause()
+                    saveProgress()
+                }
+            }
+            .onChange(of: session.phase) { updateAwake() }
             .onChange(of: speech.commandToken) { handleVoice(speech.latestCommand) }
             .onChange(of: speech.events.count) { updateAdaptiveSpeed() }
             .fullScreenCover(isPresented: $showRecording) {
@@ -138,7 +139,7 @@ struct PlayerView: View {
         }
     }
 
-    private var ink: Color { theme == .light ? .black : .white }
+    private var ink: Color { session.theme == .light ? .black : .white }
 
     private var playerChrome: some View {
         HStack(spacing: 12) {
@@ -171,13 +172,13 @@ struct PlayerView: View {
             HStack(spacing: 18) {
                 roundButton("Reset", systemImage: "backward.end.fill") { reset() }
                 roundButton("Back 10 percent", systemImage: "gobackward.10") { seek(by: -0.1) }
-                Button(playing || countdown != nil ? "Pause" : "Play", systemImage: playing || countdown != nil ? "pause.fill" : "play.fill") { togglePlay() }
+                Button(session.playing || session.countdownValue != nil ? "Pause" : "Play", systemImage: session.playing || session.countdownValue != nil ? "pause.fill" : "play.fill") { togglePlay() }
                     .font(.title)
                     .labelStyle(.iconOnly)
                     .foregroundStyle(.white)
                     .frame(width: 64, height: 64)
                     .background(CuevoraTheme.primary, in: Circle())
-                    .accessibilityLabel(playing || countdown != nil ? "Pause" : "Play")
+                    .accessibilityLabel(session.playing || session.countdownValue != nil ? "Pause" : "Play")
                 roundButton("Forward 10 percent", systemImage: "goforward.10") { seek(by: 0.1) }
                 optionsMenu
             }
@@ -198,12 +199,12 @@ struct PlayerView: View {
 
     private var optionsMenu: some View {
         Menu("Options", systemImage: "ellipsis") {
-            Toggle("Mirror Text", isOn: $mirror)
-            Toggle("Focus Guide", isOn: $focus)
-            Picker("Theme", selection: $theme) {
+            Toggle("Mirror Text", isOn: $session.mirror)
+            Toggle("Focus Guide", isOn: $session.focus)
+            Picker("Theme", selection: $session.theme) {
                 ForEach(PromptTheme.allCases, id: \.self) { Text($0.title).tag($0) }
             }
-            Picker("Countdown", selection: $countdownLength) {
+            Picker("Countdown", selection: $session.countdownLength) {
                 Text("Off").tag(0); Text("3 seconds").tag(3); Text("5 seconds").tag(5); Text("10 seconds").tag(10)
             }
             Button("Rehearse", systemImage: "waveform") { showRehearsal = true }
@@ -220,13 +221,13 @@ struct PlayerView: View {
         VStack(spacing: 10) {
             HStack {
                 Text("Speed")
-                Slider(value: $speed, in: 1...10, step: 0.5, onEditingChanged: { editing in
+                Slider(value: speedBinding, in: 1...10, step: 0.5, onEditingChanged: { editing in
                     if editing {
                         speedNote = "Fixed speed"
                         manualOverrideUntil = Date().addingTimeInterval(8)
                     }
                 })
-                Text(speed.formatted(.number.precision(.fractionLength(1))))
+                Text(session.speed.formatted(.number.precision(.fractionLength(1))))
                     .monospacedDigit()
                     .frame(width: 32, alignment: .trailing)
             }
@@ -234,11 +235,11 @@ struct PlayerView: View {
             HStack(spacing: 8) {
                 ForEach(PlaybackEngine.presets, id: \.self) { preset in
                     Button(preset.formatted(.number.precision(.fractionLength(0)))) {
-                        speed = preset
+                        session.setSpeed(preset)
                         manualOverrideUntil = Date().addingTimeInterval(8)
                     }
                     .buttonStyle(.bordered)
-                    .tint(speed == preset ? CuevoraTheme.primary : .secondary)
+                    .tint(session.speed == preset ? CuevoraTheme.primary : .secondary)
                     .accessibilityLabel("Speed \(Int(preset))")
                 }
                 Text(speedNote)
@@ -247,13 +248,13 @@ struct PlayerView: View {
             }
             HStack {
                 Text("Text")
-                Slider(value: $fontSize, in: 16...72, step: 1)
-                Text("\(Int(fontSize))").monospacedDigit().frame(width: 32, alignment: .trailing)
+                Slider(value: $session.fontSize, in: 16...72, step: 1)
+                Text("\(Int(session.fontSize))").monospacedDigit().frame(width: 32, alignment: .trailing)
             }
             HStack {
                 Text("Spacing")
-                Slider(value: $lineSpacing, in: 1...3, step: 0.1)
-                Text(lineSpacing.formatted(.number.precision(.fractionLength(1))))
+                Slider(value: $session.lineSpacing, in: 1...3, step: 0.1)
+                Text(session.lineSpacing.formatted(.number.precision(.fractionLength(1))))
                     .monospacedDigit()
                     .frame(width: 32, alignment: .trailing)
             }
@@ -270,6 +271,10 @@ struct PlayerView: View {
             .accessibilityLabel(title)
     }
 
+    private var speedBinding: Binding<Double> {
+        Binding(get: { session.speed }, set: { session.setSpeed($0) })
+    }
+
     private func handleTap(_ zone: Int) {
         if zone < 0 { seek(by: -0.1) }
         else if zone > 0 { seek(by: 0.1) }
@@ -277,20 +282,29 @@ struct PlayerView: View {
     }
 
     private func togglePlay() {
-        if playing || countdown != nil { pause() } else { startCountdown() }
+        let wasActive = session.playing || session.countdownValue != nil
+        session.toggle(at: .now)
+        if wasActive {
+            countdownTask?.cancel()
+        } else if session.countdownValue != nil {
+            watchCountdown()
+        }
+        updateAwake()
         CuevoraHaptics.impact(enabled: preferences.hapticsEnabled)
     }
 
     private func pause() {
         countdownTask?.cancel()
-        countdown = nil
-        playing = false
+        session.pause()
+        updateAwake()
     }
 
     private func reset() {
-        pause()
+        countdownTask?.cancel()
+        session.reset()
         elapsed = 0
         resetToken += 1
+        updateAwake()
         saveProgress()
     }
 
@@ -302,22 +316,20 @@ struct PlayerView: View {
 
     private func nudge(forward: Bool) {
         pause()
-        let engine = PlaybackEngine(speed: speed)
+        let engine = PlaybackEngine(speed: session.speed)
         nudgePixels = (forward ? 1 : -1) * engine.pixelsPerSecond * 5
         nudgeToken += 1
     }
 
-    private func startCountdown() {
-        guard countdownLength > 0 else { playing = true; return }
+    private func watchCountdown() {
         countdownTask?.cancel()
         countdownTask = Task { @MainActor in
-            for remaining in stride(from: countdownLength, through: 1, by: -1) {
-                countdown = remaining
-                try? await Task.sleep(for: .seconds(1))
+            while !Task.isCancelled, session.countdownValue != nil {
+                try? await Task.sleep(for: .milliseconds(200))
                 if Task.isCancelled { return }
+                session.advanceCountdown(to: .now)
             }
-            countdown = nil
-            playing = true
+            updateAwake()
         }
     }
 
@@ -330,13 +342,13 @@ struct PlayerView: View {
 
     private func handleVoice(_ command: VoiceCommand) {
         switch command {
-        case .play: pause(); playing = true
+        case .play: session.playImmediately(); updateAwake()
         case .pause, .stop: pause()
         case .faster:
-            speed = min(10, speed + 1)
+            session.adjustSpeed(by: 1)
             manualOverrideUntil = Date().addingTimeInterval(8)
         case .slower:
-            speed = max(1, speed - 1)
+            session.adjustSpeed(by: -1)
             manualOverrideUntil = Date().addingTimeInterval(8)
         case .reset: reset()
         case .unknown: break
@@ -347,14 +359,14 @@ struct PlayerView: View {
     private func updateAdaptiveSpeed() {
         guard preferences.adaptiveScrollEnabled else { speedNote = "Fixed speed"; return }
         let result = AdaptiveScroll.speed(
-            baseSpeed: speed,
+            baseSpeed: session.speed,
             targetWordsPerMinute: Double(preferences.wordsPerMinute),
             events: speech.events,
             now: Date().timeIntervalSince1970 * 1000,
             manualOverrideUntil: manualOverrideUntil.timeIntervalSince1970 * 1000
         )
         if result.reason == .adaptive {
-            speed = result.speed
+            session.setSpeed(result.speed)
             speedNote = "Estimated from speech"
         } else {
             speedNote = "Fixed speed"
@@ -369,27 +381,37 @@ struct PlayerView: View {
     }
 
     private func handleKey(_ input: String) {
+        let name: String
         switch input {
-        case " ": togglePlay()
-        case UIKeyCommand.inputUpArrow: speed = min(10, speed + 0.5); manualOverrideUntil = Date().addingTimeInterval(8)
-        case UIKeyCommand.inputDownArrow: speed = max(1, speed - 0.5); manualOverrideUntil = Date().addingTimeInterval(8)
-        case UIKeyCommand.inputLeftArrow: nudge(forward: false)
-        case UIKeyCommand.inputRightArrow: nudge(forward: true)
-        case "m": mirror.toggle()
-        case "f": focus.toggle()
-        case "r": reset()
-        case UIKeyCommand.inputEscape: dismiss()
-        default: break
+        case " ": name = "space"
+        case UIKeyCommand.inputUpArrow: name = "up"
+        case UIKeyCommand.inputDownArrow: name = "down"
+        case UIKeyCommand.inputLeftArrow: name = "left"
+        case UIKeyCommand.inputRightArrow: name = "right"
+        case UIKeyCommand.inputEscape: name = "escape"
+        default: name = input
+        }
+        guard let key = PlayerSession.Key(named: name) else { return }
+        switch key {
+        case .togglePlay: togglePlay()
+        case .faster, .slower:
+            session.perform(key, at: .now)
+            manualOverrideUntil = Date().addingTimeInterval(8)
+        case .back: nudge(forward: false)
+        case .forward: nudge(forward: true)
+        case .mirror, .focus: session.perform(key, at: .now)
+        case .reset: reset()
+        case .close: dismiss()
         }
     }
 
     private func updateAwake() {
         guard preferences.keepScreenAwake else { releaseAwake(); return }
-        if playing && !holdingAwake {
+        if session.awake && !holdingAwake {
             previousIdleDisabled = UIApplication.shared.isIdleTimerDisabled
             UIApplication.shared.isIdleTimerDisabled = true
             holdingAwake = true
-        } else if !playing {
+        } else if !session.awake {
             releaseAwake()
         }
     }
