@@ -10,7 +10,7 @@ The interface is English. System text styles are used outside the prompter. Prom
 | Reduce Motion and Increase Contrast | Calm and simple profiles reduce reliance on motion. Increase Contrast is left to the system for controls. Prompt themes already use light text on a near-black background, or the light theme. | Not run |
 | Colour alone | Play, record and delete also use text or a symbol. | Review in Interface Builder or on device |
 | Touch size | Primary controls request at least 44 by 44 points. | Not measured on device |
-| iPad split view, rotation and Stage Manager | iPhone uses a tab bar. iPad regular width opens scripts in `NavigationSplitView`. The recorder switches between a side-by-side and stacked layout. | Not run |
+| iPad split view, rotation and Stage Manager | iPhone uses a tab bar. iPad regular width uses a sidebar for Scripts, Recordings and Settings, then opens a script in the detail column. Command-N creates a script. The recorder switches between a side-by-side and stacked layout. | Not run |
 | VoiceOver over a camera preview | The preview has a front or rear camera label. Script text remains readable as an accessibility element. | Not run |
 
 Reading profiles match the reference set: default, dyslexia-friendly, low vision, high contrast, calm focus, caption-first and simple controls. Simple profiles hide the extra prompter sliders and leave play and speed available.

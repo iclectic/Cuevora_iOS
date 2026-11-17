@@ -3,6 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct LibraryView: View {
+    /// On iPad the shell already provides the sidebar, so the script list stays a single column.
+    var showsSplit: Bool = true
+
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -46,7 +49,7 @@ struct LibraryView: View {
 
     var body: some View {
         Group {
-            if sizeClass == .regular {
+            if showsSplit && sizeClass == .regular {
                 NavigationSplitView {
                     scriptList
                 } detail: {
@@ -281,6 +284,7 @@ struct LibraryView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button("New Script", systemImage: "square.and.pencil") { createScript() }
+                .keyboardShortcut("n", modifiers: .command)
                 .accessibilityLabel("New Script")
         }
     }
