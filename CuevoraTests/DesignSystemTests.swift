@@ -20,6 +20,13 @@ final class DesignSystemTests: XCTestCase {
         XCTAssertEqual(PromptText.lines(content: "", markers: [], highlights: []).first?.text, "This script is empty.")
     }
 
+    func testScriptTemplatesOfferABlankPageAndThreeStartingPoints() {
+        XCTAssertEqual(ScriptTemplate.allCases.map(\.title), ["Blank", "Introduction", "Lesson", "Announcement"])
+        XCTAssertEqual(ScriptTemplate.blank.content, "")
+        XCTAssertTrue(ScriptTemplate.lesson.content.contains("example"))
+        XCTAssertEqual(ScriptTemplate.introduction.scriptTitle, "Introduction")
+    }
+
     func testDocumentedBrandContrastClearsTheBodyTextThreshold() {
         let lightPrimary = contrast(foreground: (0.49866, 0.23140, 0.92860), background: (0.97, 0.97, 0.97))
         let darkPrimary = contrast(foreground: (0.64840, 0.53680, 0.98320), background: (0.04741, 0.04240, 0.11760))

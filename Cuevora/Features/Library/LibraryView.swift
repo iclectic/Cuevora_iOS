@@ -1,10 +1,12 @@
 import SwiftData
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct LibraryView: View {
     /// On iPad the shell already provides the sidebar, so the script list stays a single column.
     var showsSplit: Bool = true
+    var newScriptToken: Int = 0
 
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
@@ -29,6 +31,7 @@ struct LibraryView: View {
     @State private var importError: String?
     @State private var backupMessage: String?
     @State private var showOnboarding = false
+    @State private var handledNewScriptToken = 0
 
     private var preferences: AppPreferences? { preferencesList.first }
     private var selectedScript: Script? { scripts.first { $0.persistentModelID == selectedID } }
@@ -39,12 +42,25 @@ struct LibraryView: View {
             let matchesTag = preferences?.selectedTag == nil || script.tags.contains(preferences?.selectedTag ?? "")
             return matchesSearch && matchesTag
         }
+        let sorted: [Script]
         switch preferences?.sortOrder ?? 0 {
-        case 1: return query.sorted { $0.displayTitle.localizedStandardCompare($1.displayTitle) == .orderedAscending }
-        case 2: return query.sorted { $0.content.count > $1.content.count }
-        case 3: return query.sorted { $0.createdDate > $1.createdDate }
-        default: return query
+        case 1: sorted = query.sorted { $0.displayTitle.localizedStandardCompare($1.displayTitle) == .orderedAscending }
+        case 2: sorted = query.sorted { $0.content.count > $1.content.count }
+        case 3: sorted = query.sorted { $0.createdDate > $1.createdDate }
+        default: sorted = query
         }
+        return sorted.sorted { lhs, rhs in
+            if lhs.pinned != rhs.pinned { return lhs.pinned && !rhs.pinned }
+            return false
+        }
+    }
+
+    private var libraryTags: [String] {
+        Array(Set(scripts.flatMap(\.tags))).sorted()
+    }
+
+    private var indexToken: String {
+        scripts.map { "\($0.identity.uuidString)-\($0.updatedAt.timeIntervalSince1970)-\($0.pinned)" }.joined(separator: "|")
     }
 
     var body: some View {
@@ -68,13 +84,17 @@ struct LibraryView: View {
             context.autosaveEnabled = false
             backfillIdentities()
             handleShortcut()
+            consumeNewScriptRequest()
+            ScriptIndex.sync(scripts)
             if preferences?.onboardingComplete == false { showOnboarding = true }
         }
+        .onChange(of: indexToken) { ScriptIndex.sync(scripts) }
+        .onChange(of: newScriptToken) { consumeNewScriptRequest() }
         .onChange(of: scenePhase) { if scenePhase == .active { handleShortcut() } }
         .fullScreenCover(isPresented: $showOnboarding) { onboarding }
         .fullScreenCover(item: $playerScript) { script in
             if let preferences {
-                PlayerView(script: script, preferences: preferences, initialProgress: preferences.lastScriptUUID == script.identity ? preferences.lastProgress : 0)
+                PlayerView(script: script, preferences: preferences, initialProgress: script.readingProgress)
             }
         }
         .fullScreenCover(item: $recordingScript) { script in
@@ -104,13 +124,46 @@ struct LibraryView: View {
     }
 
     private var scriptList: some View {
-        list
-            .navigationTitle("Scripts")
-            .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $search, prompt: "Search")
-            .toolbar { toolbar }
-            .scrollContentBackground(.hidden)
-            .background(CuevoraTheme.background)
+        VStack(spacing: 0) {
+            if !libraryTags.isEmpty { tagChips }
+            list
+        }
+        .navigationTitle("Scripts")
+        .navigationBarTitleDisplayMode(.large)
+        .searchable(text: $search, prompt: "Search")
+        .toolbar { toolbar }
+        .scrollContentBackground(.hidden)
+        .background(CuevoraTheme.background)
+        .dropDestination(for: String.self) { items, _ in
+            let text = items.joined(separator: "\n\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return false }
+            createScript(.blank, title: "Dropped Text", content: text)
+            return true
+        }
+    }
+
+    private var tagChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                tagChip("All", tag: nil)
+                ForEach(libraryTags, id: \.self) { tag in
+                    tagChip(tag, tag: tag)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func tagChip(_ title: String, tag: String?) -> some View {
+        let selected = preferences?.selectedTag == tag
+        return Button(title) {
+            preferences?.selectedTag = tag
+            try? context.save()
+        }
+        .buttonStyle(.bordered)
+        .tint(selected ? CuevoraTheme.primary : .secondary)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     @ViewBuilder
@@ -184,6 +237,8 @@ struct LibraryView: View {
                             scriptRow(script)
                                 .tag(script.persistentModelID)
                                 .swipeActions(edge: .leading) {
+                                    Button(script.pinned ? "Unpin" : "Pin", systemImage: script.pinned ? "pin.slash" : "pin") { togglePin(script) }
+                                        .tint(.orange)
                                     Button("Prompt", systemImage: "play.fill") { openPlayer(script) }
                                         .tint(CuevoraTheme.primary)
                                 }
@@ -193,7 +248,12 @@ struct LibraryView: View {
                                 .contextMenu {
                                     Button("Prompt", systemImage: "play.fill") { openPlayer(script) }
                                     Button("Record", systemImage: "video") { recordingScript = script }
+                                    Button(script.pinned ? "Unpin" : "Pin", systemImage: script.pinned ? "pin.slash" : "pin") { togglePin(script) }
                                     Button("Duplicate", systemImage: "plus.square.on.square") { duplicate(script) }
+                                    Button("Copy Text", systemImage: "doc.on.doc") { UIPasteboard.general.string = script.content }
+                                    ShareLink(item: script.content, subject: Text(script.displayTitle)) {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
                                     Button("Delete", systemImage: "trash", role: .destructive) { scriptToDelete = script }
                                 }
                         }
@@ -224,9 +284,17 @@ struct LibraryView: View {
                 HStack(spacing: 12) {
                     ScriptMark(title: script.displayTitle)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(script.displayTitle)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
+                        HStack(spacing: 6) {
+                            Text(script.displayTitle)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.primary)
+                            if script.pinned {
+                                Image(systemName: "pin.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(CuevoraTheme.primary)
+                                    .accessibilityLabel("Pinned")
+                            }
+                        }
                         if preferences?.compactList != true {
                             Text(scriptSubtitle(script))
                                 .font(.subheadline)
@@ -283,9 +351,12 @@ struct LibraryView: View {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button("New Script", systemImage: "square.and.pencil") { createScript() }
-                .keyboardShortcut("n", modifiers: .command)
-                .accessibilityLabel("New Script")
+            Menu("New Script", systemImage: "square.and.pencil") {
+                ForEach(ScriptTemplate.allCases) { template in
+                    Button(template.title) { createScript(template) }
+                }
+            }
+            .accessibilityLabel("New Script")
         }
     }
 
@@ -337,8 +408,10 @@ struct LibraryView: View {
         }
     }
 
-    private func createScript() {
+    private func createScript(_ template: ScriptTemplate = .blank, title: String? = nil, content: String? = nil) {
         let script = Script()
+        script.title = title ?? template.scriptTitle
+        script.content = content ?? template.content
         context.insert(script)
         do {
             try context.save()
@@ -379,13 +452,21 @@ struct LibraryView: View {
     }
 
     private func openPlayer(_ script: Script) {
-        let identity = script.identity
-        if preferences?.lastScriptUUID != identity {
-            preferences?.lastProgress = 0
-        }
-        preferences?.lastScriptUUID = identity
+        preferences?.lastScriptUUID = script.identity
+        preferences?.lastProgress = script.readingProgress
         try? context.save()
         playerScript = script
+    }
+
+    private func togglePin(_ script: Script) {
+        script.pinned.toggle()
+        try? context.save()
+    }
+
+    private func consumeNewScriptRequest() {
+        guard newScriptToken > handledNewScriptToken else { return }
+        handledNewScriptToken = newScriptToken
+        createScript(.blank)
     }
 
     private func backfillIdentities() {
@@ -479,7 +560,7 @@ struct LibraryView: View {
 
     private func handleShortcut() {
         switch ShortcutInbox.consume() {
-        case .createScript: createScript()
+        case .createScript: createScript(.blank)
         case .openMostRecent:
             if let recent = scripts.first { openEditor(recent) }
         case nil: break

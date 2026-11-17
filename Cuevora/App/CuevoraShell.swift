@@ -11,6 +11,7 @@ struct CuevoraShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Query private var preferencesList: [AppPreferences]
     @State private var section = CuevoraSection.scripts
+    @State private var newScriptToken = 0
 
     var body: some View {
         Group {
@@ -27,9 +28,13 @@ struct CuevoraShell: View {
                     sectionDetail(showsScriptSplit: false)
                 }
                 .navigationSplitViewStyle(.balanced)
+                .onReceive(NotificationCenter.default.publisher(for: .cuevoraNewScript)) { _ in
+                    section = .scripts
+                    newScriptToken += 1
+                }
             } else {
                 TabView(selection: $section) {
-                    LibraryView()
+                    LibraryView(newScriptToken: newScriptToken)
                         .tabItem { Label("Scripts", systemImage: "text.quote") }
                         .tag(CuevoraSection.scripts)
                     RecordingsView()
@@ -38,6 +43,10 @@ struct CuevoraShell: View {
                     settingsTab
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(CuevoraSection.settings)
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .cuevoraNewScript)) { _ in
+                    section = .scripts
+                    newScriptToken += 1
                 }
             }
         }
@@ -48,7 +57,7 @@ struct CuevoraShell: View {
     private func sectionDetail(showsScriptSplit: Bool) -> some View {
         switch section {
         case .scripts:
-            LibraryView(showsSplit: showsScriptSplit)
+            LibraryView(showsSplit: showsScriptSplit, newScriptToken: newScriptToken)
         case .recordings:
             RecordingsView()
         case .settings:

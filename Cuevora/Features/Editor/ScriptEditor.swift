@@ -73,6 +73,7 @@ struct ScriptEditor: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu("More", systemImage: "ellipsis.circle") {
                     Button("Record", systemImage: "video") { showRecording = true }
+                    Button("Duplicate", systemImage: "plus.square.on.square") { duplicateScript() }
                     Button("History", systemImage: "clock.arrow.circlepath") { showHistory = true }
                     Button("Import Text", systemImage: "square.and.arrow.down") { importingText = true }
                     Button("Export Text", systemImage: "square.and.arrow.up") {
@@ -86,7 +87,7 @@ struct ScriptEditor: View {
             }
         }
         .fullScreenCover(isPresented: $showPlayer) {
-            PlayerView(script: script, preferences: preferences, initialProgress: preferences.lastScriptUUID == script.identity ? preferences.lastProgress : 0)
+            PlayerView(script: script, preferences: preferences, initialProgress: script.readingProgress)
         }
         .fullScreenCover(isPresented: $showRecording) {
             RecordingView(script: script, preferences: preferences)
@@ -173,6 +174,16 @@ struct ScriptEditor: View {
 
     private var orderedSnapshots: [RevisionSnapshot] {
         script.snapshots.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func duplicateScript() {
+        var copy = ScriptTransfer.portable(script)
+        copy.title = "\(script.displayTitle) Copy"
+        copy.sourceID = nil
+        let created = ScriptTransfer.insert(copy, into: context)
+        created.updatedAt = .now
+        created.readingProgress = 0
+        try? context.save()
     }
 
     private func scheduleSave() {

@@ -1,6 +1,10 @@
 import SwiftData
 import SwiftUI
 
+extension Notification.Name {
+    static let cuevoraNewScript = Notification.Name("cuevoraNewScript")
+}
+
 @main
 struct CuevoraApp: App {
     var body: some Scene {
@@ -8,6 +12,14 @@ struct CuevoraApp: App {
             RootView()
         }
         .modelContainer(for: [Script.self, RevisionSnapshot.self, AppPreferences.self, RecordingItem.self, RehearsalRecord.self])
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("New Script") {
+                    NotificationCenter.default.post(name: .cuevoraNewScript, object: nil)
+                }
+                .keyboardShortcut("n", modifiers: .command)
+            }
+        }
     }
 }
 

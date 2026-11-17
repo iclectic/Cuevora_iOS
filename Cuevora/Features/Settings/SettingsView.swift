@@ -64,6 +64,15 @@ struct SettingsView: View {
                     Text(CloudSyncPolicy.explanation)
                     Button("Delete Local Data", role: .destructive) { confirmClear = true }
                 }
+                Section("Keyboard") {
+                    LabeledContent("New script", value: "Command N")
+                    LabeledContent("Play or pause", value: "Space")
+                    LabeledContent("Skip", value: "Left and right arrows")
+                    LabeledContent("Speed", value: "Up and down arrows")
+                    LabeledContent("Mirror, focus, reset", value: "M, F, R")
+                    LabeledContent("Close the prompter", value: "Escape")
+                    Button("Reset Prompter Defaults") { resetPrompterDefaults() }
+                }
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0")
                     Link("Send Feedback", destination: URL(string: "mailto:ibimbraide@gmail.com")!)
@@ -85,6 +94,22 @@ struct SettingsView: View {
             } message: { Text("This removes scripts, revisions, rehearsal reports and recordings from this device. Export a backup first if you want a copy.") }
             .onDisappear { try? context.save() }
         }
+    }
+
+    private func resetPrompterDefaults() {
+        let fresh = PortableSettings()
+        preferences.defaultTheme = fresh.defaultTheme
+        preferences.defaultSpeed = fresh.defaultSpeed
+        preferences.defaultFontSize = fresh.defaultFontSize
+        preferences.defaultLineSpacing = fresh.defaultLineSpacing
+        preferences.wordsPerMinute = fresh.wordsPerMinute
+        preferences.countdownDuration = fresh.countdownDuration
+        preferences.mirrorMode = fresh.mirrorMode
+        preferences.focusLineEnabled = fresh.focusLineEnabled
+        preferences.keepScreenAwake = fresh.keepScreenAwake
+        preferences.hapticsEnabled = fresh.hapticsEnabled
+        preferences.gestureControlsEnabled = fresh.gestureControlsEnabled
+        try? context.save()
     }
 
     private func clearLocalData() {
