@@ -173,8 +173,8 @@ struct PromptScroll: UIViewRepresentable {
             engine.playing = parent.playing
             guard parent.playing else { lastTime = nil; return }
             defer { lastTime = link.timestamp }
-            guard let lastTime else { return }
-            let completed = engine.advance(delta: link.timestamp - lastTime)
+            guard let delta = PlaybackTiming.delta(previous: lastTime, now: link.timestamp) else { return }
+            let completed = engine.advance(delta: delta)
             applying = true
             scroll.setContentOffset(CGPoint(x: 0, y: engine.offset), animated: false)
             applying = false
