@@ -6,7 +6,6 @@ struct PlayerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityContrast) private var contrast
     @Environment(\.modelContext) private var context
     let script: Script
     var preferences: AppPreferences
@@ -98,7 +97,7 @@ struct PlayerView: View {
                 if focus {
                     Rectangle()
                         .fill(theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
-                        .frame(height: contrast == .increased ? 4 : 2)
+                        .frame(height: UIAccessibility.isDarkerSystemColorsEnabled || profile.prefersHighContrast ? 4 : 2)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
