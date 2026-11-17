@@ -25,7 +25,8 @@ final class Script {
     var recordings: [RecordingItem]
 
     init() {
-        uuid = UUID()
+        let identifier = UUID()
+        uuid = identifier
         title = "Untitled Script"
         content = ""
         createdAt = .now
@@ -35,7 +36,7 @@ final class Script {
         highlights = []
         readingProgress = 0
         pinned = false
-        externalID = uuid?.uuidString ?? ""
+        externalID = identifier.uuidString
         revisions = []
         snapshots = []
         rehearsals = []
