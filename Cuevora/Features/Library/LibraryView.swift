@@ -22,7 +22,7 @@ struct LibraryView: View {
     @State private var recordingScript: Script?
     @State private var saveError = false
     @State private var scriptToDelete: Script?
-    @State private var deleted: PortableScript?
+    @State private var deleted: StoredScript?
     @State private var exporting = false
     @State private var importing = false
     @State private var importingText = false
@@ -107,7 +107,12 @@ struct LibraryView: View {
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in importBackup(result) }
         .fileImporter(isPresented: $importingText, allowedContentTypes: [.plainText]) { result in importText(result) }
         .sheet(item: $pending) { pending in
-            ImportReview(document: pending.document, onCopy: { apply(pending.document, replacing: false) }, onReplace: { apply(pending.document, replacing: true) })
+            ImportReview(
+                document: pending.document,
+                onMerge: { apply(pending.document, choice: .merge) },
+                onCopy: { apply(pending.document, choice: .copy) },
+                onReplace: { apply(pending.document, choice: .replace) }
+            )
         }
         .alert("Cannot Import", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
             Button("OK", role: .cancel) { importError = nil }
@@ -433,22 +438,17 @@ struct LibraryView: View {
 
     private func deleteSelected() {
         guard let script = scriptToDelete else { return }
-        let snapshot = ScriptTransfer.portable(script)
-        context.delete(script)
-        do {
-            try context.save()
-            deleted = snapshot
-            if selectedID == script.persistentModelID { selectedID = nil }
-        } catch {
-            context.rollback()
-            saveError = true
-        }
+        let removedID = script.persistentModelID
+        let next = currentLibrary().deleting(id: script.identity.uuidString)
         scriptToDelete = nil
+        commit(next, settings: nil, rehearsals: [])
+        if selectedID == removedID { selectedID = nil }
     }
 
-    private func restore(_ snapshot: PortableScript) {
-        _ = ScriptTransfer.insert(snapshot, into: context)
-        do { try context.save(); deleted = nil } catch { context.rollback(); saveError = true }
+    private func restore(_ snapshot: StoredScript) {
+        var library = currentLibrary()
+        library.deleted = snapshot
+        commit(library.undoingDelete(), settings: nil, rehearsals: [])
     }
 
     private func openPlayer(_ script: Script) {
@@ -471,9 +471,15 @@ struct LibraryView: View {
 
     private func backfillIdentities() {
         var changed = false
-        for script in scripts where script.uuid == nil {
-            script.uuid = UUID()
-            changed = true
+        for script in scripts {
+            if script.uuid == nil {
+                script.uuid = UUID()
+                changed = true
+            }
+            if script.externalID.isEmpty {
+                script.externalID = script.identity.uuidString
+                changed = true
+            }
         }
         if changed { try? context.save() }
     }
@@ -513,11 +519,52 @@ struct LibraryView: View {
         }
     }
 
-    private func apply(_ document: BackupDocumentModel, replacing: Bool) {
-        if replacing { scripts.forEach(context.delete) }
-        for script in document.scripts { _ = ScriptTransfer.insert(script, into: context) }
-        if let settings = document.settings { preferences?.apply(settings) }
-        for session in document.rehearsals {
+    private func currentLibrary() -> ScriptLibrary {
+        ScriptLibrary(
+            scripts: scripts.map { script in
+                StoredScript(id: script.identity.uuidString, script: ScriptTransfer.portable(script), readingProgress: script.readingProgress, pinned: script.pinned)
+            },
+            deleted: deleted
+        )
+    }
+
+    private func apply(_ document: BackupDocumentModel, choice: ImportChoice) {
+        let next = currentLibrary().choosing(choice, document: document)
+        guard choice != .cancelled else {
+            pending = nil
+            return
+        }
+        let settings = choice == .copy ? nil : document.settings
+        let sessions = choice == .copy ? [] : document.rehearsals
+        let message: String
+        switch choice {
+        case .merge: message = "Matching scripts were updated. Other scripts on this device were kept. Recordings were not changed."
+        case .replace: message = "Backup replaced the scripts on this device. Recordings were kept."
+        case .copy: message = "Scripts were imported as copies. Existing scripts were kept."
+        case .cancelled: message = ""
+        }
+        if commit(next, settings: settings, rehearsals: sessions, message: message) {
+            pending = nil
+        }
+    }
+
+    @discardableResult
+    private func commit(_ library: ScriptLibrary, settings: PortableSettings?, rehearsals sessions: [PortableRehearsal], message: String? = nil) -> Bool {
+        let current = Array(scripts)
+        let existing = Dictionary(uniqueKeysWithValues: current.map { ($0.identity.uuidString, $0) })
+        let nextIDs = Set(library.scripts.map(\.id))
+        for script in current where !nextIDs.contains(script.identity.uuidString) {
+            context.delete(script)
+        }
+        for stored in library.scripts {
+            if let script = existing[stored.id] {
+                ScriptTransfer.apply(stored, to: script, in: context)
+            } else {
+                _ = ScriptTransfer.insert(stored, into: context)
+            }
+        }
+        if let settings { preferences?.apply(settings) }
+        for session in sessions {
             guard let data = try? JSONEncoder().encode(session.metrics), let metricsJSON = String(data: data, encoding: .utf8) else { continue }
             let transcript = (try? JSONEncoder().encode(session.transcript)).flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
             let record = RehearsalRecord(scriptTitle: session.scriptTitle, startedAt: session.startedAt, endedAt: session.endedAt, summary: "Imported rehearsal estimate", metricsJSON: metricsJSON, transcriptJSON: transcript, transcriptRetained: !session.transcript.isEmpty)
@@ -525,12 +572,14 @@ struct LibraryView: View {
         }
         do {
             try context.save()
-            backupMessage = replacing ? "Backup replaced the scripts on this device. Recordings were kept." : "Scripts were imported as copies. Existing scripts were kept."
+            deleted = library.deleted
+            if let message { backupMessage = message }
+            return true
         } catch {
             context.rollback()
             saveError = true
+            return false
         }
-        pending = nil
     }
 
     private func importText(_ result: Result<URL, Error>) {
@@ -564,57 +613,6 @@ struct LibraryView: View {
         case .openMostRecent:
             if let recent = scripts.first { openEditor(recent) }
         case nil: break
-        }
-    }
-}
-
-private struct ImportReview: View {
-    @Environment(\.dismiss) private var dismiss
-    var document: BackupDocumentModel
-    var onCopy: () -> Void
-    var onReplace: () -> Void
-    @State private var confirmReplace = false
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    LabeledContent("Scripts", value: "\(document.scripts.count)")
-                    LabeledContent("From", value: sourceName)
-                    Text("Recordings are not in this file and will not be changed.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                if !document.notices.isEmpty {
-                    Section("Notes") {
-                        ForEach(document.notices, id: \.self) { Text($0) }
-                    }
-                }
-            }
-            .navigationTitle("Import")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add Copies") { onCopy(); dismiss() }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    Button("Replace Scripts", role: .destructive) { confirmReplace = true }
-                }
-            }
-            .confirmationDialog("Replace the scripts on this device?", isPresented: $confirmReplace, titleVisibility: .visible) {
-                Button("Replace Scripts", role: .destructive) { onReplace(); dismiss() }
-            } message: { Text("Existing scripts and their revision history are removed. Saved recordings stay on this device.") }
-        }
-    }
-
-    private var sourceName: String {
-        switch document.source {
-        case .androidVersion1: "an Android Cuevora backup"
-        case .iosVersion1: "an earlier iOS backup"
-        case .iosVersion2: "a Cuevora iOS backup"
         }
     }
 }

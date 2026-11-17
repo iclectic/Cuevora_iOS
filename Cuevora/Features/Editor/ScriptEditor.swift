@@ -132,6 +132,10 @@ struct ScriptEditor: View {
         .onChange(of: scenePhase) {
             if scenePhase != .active && saveStatus != "Saved" { saveTask?.cancel(); _ = saveChanges() }
         }
+        .onDisappear {
+            saveTask?.cancel()
+            if saveStatus != "Saved" { _ = saveChanges() }
+        }
         .interactiveDismissDisabled()
     }
 
@@ -190,17 +194,24 @@ struct ScriptEditor: View {
         saveStatus = "Saving…"
         saveTask?.cancel()
         saveTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(700))
+            try? await Task.sleep(for: .seconds(ScriptDraft.debounce))
             guard !Task.isCancelled else { return }
             _ = saveChanges()
         }
     }
 
     private func saveChanges() -> Bool {
-        script.tags = tagText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        let previous = lastSavedContent
-        if previous != script.content && !previous.isEmpty {
-            let snapshot = RevisionSnapshot(content: previous, createdAt: .now)
+        var draft = ScriptDraft(
+            title: script.title,
+            tagText: tagText,
+            content: script.content,
+            savedContent: lastSavedContent,
+            revisions: script.snapshots.map { PortableRevision(content: $0.content, timestamp: $0.createdAt) }
+        )
+        draft.change(at: .now)
+        script.tags = ScriptDraft.tags(in: tagText)
+        if let revision = draft.succeed(at: .now) {
+            let snapshot = RevisionSnapshot(content: revision.content, createdAt: revision.timestamp)
             snapshot.script = script
             context.insert(snapshot)
             let extras = script.snapshots.sorted { $0.createdAt > $1.createdAt }.dropFirst(BackupCodec.maxRevisions)

@@ -13,6 +13,8 @@ final class Script {
     var highlights: [Int]
     var readingProgress: Double = 0
     var pinned: Bool = false
+    /// Stable id from this device or from a backup. Android ids are not UUIDs, so they live here.
+    var externalID: String = ""
     /// Earlier builds stored revision text without timestamps. New saves use `snapshots`.
     var revisions: [String]
     @Relationship(deleteRule: .cascade, inverse: \RevisionSnapshot.script)
@@ -33,6 +35,7 @@ final class Script {
         highlights = []
         readingProgress = 0
         pinned = false
+        externalID = uuid?.uuidString ?? ""
         revisions = []
         snapshots = []
         rehearsals = []
