@@ -56,11 +56,12 @@ struct RecordingView: View {
                 }
             }
             .onChange(of: capture.savedTake) { rememberTake() }
+            .onChange(of: capture.pendingLibraryTakes) { adoptRecoveredTakes() }
             .onChange(of: capture.discardedFileName) { deleteDiscarded() }
             .sheet(isPresented: $showShare) {
                 if let url = capture.previewURL {
-                    ShareSheet(url: url) { completed in
-                        if !completed { capture.noteShareFailed() }
+                    ShareSheet(url: url) { result in
+                        capture.noteShare(result)
                     }
                 }
             }
@@ -74,13 +75,21 @@ struct RecordingView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if split {
             GeometryReader { geo in
-                let wide = geo.size.width > geo.size.height || sizeClass == .regular
+                let stage = PromptStage.stage(
+                    split: true,
+                    width: geo.size.width,
+                    height: geo.size.height,
+                    regularWidth: sizeClass == .regular
+                )
                 let cameraView = cameraPreview
                 let promptView = prompt
-                if wide {
-                    HStack(spacing: 0) { cameraView.frame(width: geo.size.width * 0.42); promptView }
-                } else {
-                    VStack(spacing: 0) { cameraView.frame(height: geo.size.height * 0.34); promptView }
+                switch stage {
+                case .splitSide(let fraction):
+                    HStack(spacing: 0) { cameraView.frame(width: geo.size.width * fraction); promptView }
+                case .splitStack(let fraction):
+                    VStack(spacing: 0) { cameraView.frame(height: geo.size.height * fraction); promptView }
+                case .overlay:
+                    ZStack { cameraView; promptView }
                 }
             }
         } else {
@@ -89,7 +98,7 @@ struct RecordingView: View {
     }
 
     private var cameraPreview: some View {
-        CameraPreview(session: capture.session, mirrored: capture.usingFrontCamera)
+        CameraPreview(session: capture.session, mirrored: CaptureMirror.previewMirrored(frontCamera: capture.usingFrontCamera))
             .accessibilityLabel(capture.usingFrontCamera ? "Front camera preview" : "Rear camera preview")
     }
 
@@ -185,12 +194,16 @@ struct RecordingView: View {
             }
             HStack(spacing: 16) {
                 Button(split ? "Overlay" : "Split View", systemImage: split ? "rectangle.inset.filled" : "rectangle.split.2x1") { split.toggle() }
+                    .accessibilityLabel(split ? "Overlay" : "Split View")
                 Button("Share", systemImage: "square.and.arrow.up") { showShare = true }
                     .disabled(capture.previewURL == nil)
+                    .accessibilityLabel("Share")
                 Button("Save to Photos", systemImage: "photo") { capture.saveCurrentToPhotos() }
                     .disabled(capture.previewURL == nil)
+                    .accessibilityLabel("Save to Photos")
                 Button("Delete Take", systemImage: "trash", role: .destructive) { capture.discard() }
                     .disabled(capture.previewURL == nil)
+                    .accessibilityLabel("Delete Take")
             }
             .labelStyle(.iconOnly)
             .font(.body)
@@ -235,11 +248,24 @@ struct RecordingView: View {
 
     private func rememberTake() {
         guard let take = capture.savedTake, rememberedFile != take.fileName else { return }
-        let item = RecordingItem(fileName: take.fileName, scriptTitle: script.displayTitle, duration: take.duration, partial: take.partial, recoverable: take.recoverable)
-        item.script = script
+        insert(take, title: script.displayTitle, linkScript: true)
+        rememberedFile = take.fileName
+    }
+
+    private func adoptRecoveredTakes() {
+        for take in capture.pendingLibraryTakes {
+            insert(take, title: "Recovered take", linkScript: false)
+        }
+    }
+
+    private func insert(_ take: SavedTake, title: String, linkScript: Bool) {
+        let name = take.fileName
+        let descriptor = FetchDescriptor<RecordingItem>(predicate: #Predicate { $0.fileName == name })
+        guard ((try? context.fetch(descriptor)) ?? []).isEmpty else { return }
+        let item = RecordingItem(fileName: name, scriptTitle: title, duration: take.duration, partial: take.partial, recoverable: take.recoverable)
+        if linkScript { item.script = script }
         context.insert(item)
         try? context.save()
-        rememberedFile = take.fileName
     }
 
     private func deleteDiscarded() {
@@ -252,7 +278,7 @@ struct RecordingView: View {
 
 struct ShareSheet: UIViewControllerRepresentable {
     var url: URL
-    var onComplete: (Bool) -> Void
+    var onComplete: (ShareResult) -> Void
 
     func makeUIViewController(context: Context) -> ShareHost {
         let host = ShareHost()
@@ -269,7 +295,7 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 final class ShareHost: UIViewController {
     var url: URL?
-    var onComplete: ((Bool) -> Void)?
+    var onComplete: ((ShareResult) -> Void)?
     private var presentedShare = false
 
     override func viewDidAppear(_ animated: Bool) {
@@ -280,7 +306,13 @@ final class ShareHost: UIViewController {
         activity.popoverPresentationController?.sourceView = view
         activity.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
         activity.completionWithItemsHandler = { _, completed, _, error in
-            self.onComplete?(completed && error == nil)
+            if error != nil {
+                self.onComplete?(.failed)
+            } else if completed {
+                self.onComplete?(.finished)
+            } else {
+                self.onComplete?(.cancelled)
+            }
         }
         present(activity, animated: true)
     }
