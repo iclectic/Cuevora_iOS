@@ -26,6 +26,10 @@ struct SettingsView: View {
                         }
                     }
                     Text(preferences.profile.detail).font(.footnote).foregroundStyle(.secondary)
+                    Text("Text size, Bold Text, Increase Contrast, Reduce Motion, VoiceOver and Switch Control follow the system settings. Buttons stay available when gestures are off.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Text(AppLanguage.interfaceNotice)
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("Prompter") {
                     Picker("Theme", selection: $preferences.defaultTheme) {
@@ -76,7 +80,7 @@ struct SettingsView: View {
                 Section("About") {
                     LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0")
                     Link("Send Feedback", destination: URL(string: "mailto:ibimbraide@gmail.com")!)
-                    Text("The interface is in English.")
+                    Text(AppLanguage.interfaceNotice)
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

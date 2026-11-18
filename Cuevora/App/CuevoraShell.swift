@@ -15,7 +15,7 @@ struct CuevoraShell: View {
 
     var body: some View {
         Group {
-            if sizeClass == .regular {
+            if ShellLayout.choose(regularWidth: sizeClass == .regular) == .sidebar {
                 NavigationSplitView {
                     List(selection: sidebarSelection) {
                         Label("Scripts", systemImage: "text.quote").tag(CuevoraSection.scripts)

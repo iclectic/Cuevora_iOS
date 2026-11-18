@@ -168,6 +168,7 @@ struct LibraryView: View {
         }
         .buttonStyle(.bordered)
         .tint(selected ? CuevoraTheme.primary : .secondary)
+        .frame(minHeight: AccessibilityPresentation.minimumTouch)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

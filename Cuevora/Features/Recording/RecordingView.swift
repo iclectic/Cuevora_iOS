@@ -7,6 +7,8 @@ struct RecordingView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var context
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let script: Script
     var preferences: AppPreferences
 
@@ -43,7 +45,7 @@ struct RecordingView: View {
                             .accessibilityLabel("Recording starts in \(seconds)")
                     }
                 }
-                .overlay(alignment: .top) { status }
+                .safeAreaInset(edge: .top, spacing: 0) { status }
                 .safeAreaInset(edge: .bottom, spacing: 0) { controls }
                 .background(.black)
                 .toolbar(.hidden, for: .navigationBar)
@@ -109,11 +111,13 @@ struct RecordingView: View {
             highlights: script.highlights,
             playing: playing,
             speed: speed,
-            fontSize: min(preferences.defaultFontSize, 32),
-            lineSpacing: preferences.defaultLineSpacing,
-            theme: preferences.theme,
+            fontSize: recordingPresentation.fontSize,
+            lineSpacing: recordingPresentation.lineSpacing,
+            theme: recordingPresentation.theme,
             mirrored: false,
-            gesturesEnabled: false,
+            gesturesEnabled: recordingPresentation.gesturesEnabled,
+            reduceMotion: recordingPresentation.reduceMotion,
+            boldText: recordingPresentation.boldText,
             transparentBackground: !split,
             resetToken: resetToken,
             seekToken: seekToken,
@@ -136,7 +140,7 @@ struct RecordingView: View {
             Button("Close", systemImage: "xmark") { capture.shutdown(); dismiss() }
                 .labelStyle(.iconOnly)
                 .font(.body.weight(.semibold))
-                .frame(width: 36, height: 36)
+                .frame(width: AccessibilityPresentation.touchSide(44), height: AccessibilityPresentation.touchSide(44))
                 .background(.ultraThinMaterial, in: Circle())
                 .accessibilityLabel("Close")
             VStack(alignment: .leading, spacing: 2) {
@@ -194,15 +198,19 @@ struct RecordingView: View {
             }
             HStack(spacing: 16) {
                 Button(split ? "Overlay" : "Split View", systemImage: split ? "rectangle.inset.filled" : "rectangle.split.2x1") { split.toggle() }
+                    .frame(width: AccessibilityPresentation.minimumTouch, height: AccessibilityPresentation.minimumTouch)
                     .accessibilityLabel(split ? "Overlay" : "Split View")
                 Button("Share", systemImage: "square.and.arrow.up") { showShare = true }
                     .disabled(capture.previewURL == nil)
+                    .frame(width: AccessibilityPresentation.minimumTouch, height: AccessibilityPresentation.minimumTouch)
                     .accessibilityLabel("Share")
                 Button("Save to Photos", systemImage: "photo") { capture.saveCurrentToPhotos() }
                     .disabled(capture.previewURL == nil)
+                    .frame(width: AccessibilityPresentation.minimumTouch, height: AccessibilityPresentation.minimumTouch)
                     .accessibilityLabel("Save to Photos")
                 Button("Delete Take", systemImage: "trash", role: .destructive) { capture.discard() }
                     .disabled(capture.previewURL == nil)
+                    .frame(width: AccessibilityPresentation.minimumTouch, height: AccessibilityPresentation.minimumTouch)
                     .accessibilityLabel("Delete Take")
             }
             .labelStyle(.iconOnly)
@@ -239,6 +247,25 @@ struct RecordingView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(capture.phase == .recording ? "Stop" : "Record")
         .accessibilityHint("Asks for the camera and microphone only when you start.")
+    }
+
+    private var recordingPresentation: PromptPresentation {
+        AccessibilityPresentation.prompt(
+            baseFont: preferences.defaultFontSize,
+            baseSpacing: preferences.defaultLineSpacing,
+            theme: preferences.theme,
+            gesturesEnabled: false,
+            context: AccessibilityContext(
+                profile: preferences.profile,
+                reduceMotion: reduceMotion,
+                increaseContrast: UIAccessibility.isDarkerSystemColorsEnabled,
+                differentiateWithoutColor: UIAccessibility.shouldDifferentiateWithoutColor,
+                boldText: UIAccessibility.isBoldTextEnabled,
+                accessibilityTextSize: typeSize.isAccessibilitySize,
+                voiceOver: UIAccessibility.isVoiceOverRunning,
+                switchControl: UIAccessibility.isSwitchControlRunning
+            )
+        )
     }
 
     private var isCountdown: Bool {

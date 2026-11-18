@@ -48,12 +48,33 @@ struct PlayerView: View {
     }
 
     private var profile: ReadingProfile { preferences.profile }
-    private var reducePlayerMotion: Bool { reduceMotion || profile.prefersReducedMotion }
-    private var simpleControls: Bool { profile.simplifiesControls }
-    private var effectiveFont: Double {
-        PromptTypography.fontSize(base: session.fontSize, profile: profile, accessibilitySize: typeSize.isAccessibilitySize)
+    private var accessibilityContext: AccessibilityContext {
+        AccessibilityContext(
+            profile: profile,
+            reduceMotion: reduceMotion,
+            increaseContrast: UIAccessibility.isDarkerSystemColorsEnabled,
+            differentiateWithoutColor: UIAccessibility.shouldDifferentiateWithoutColor,
+            boldText: UIAccessibility.isBoldTextEnabled,
+            accessibilityTextSize: typeSize.isAccessibilitySize,
+            voiceOver: UIAccessibility.isVoiceOverRunning,
+            switchControl: UIAccessibility.isSwitchControlRunning
+        )
     }
-    private var effectiveSpacing: Double { PromptTypography.lineSpacing(base: session.lineSpacing, profile: profile) }
+    private var presentation: PromptPresentation {
+        AccessibilityPresentation.prompt(
+            baseFont: session.fontSize,
+            baseSpacing: session.lineSpacing,
+            theme: session.theme,
+            gesturesEnabled: preferences.gestureControlsEnabled && session.countdownValue == nil,
+            context: accessibilityContext
+        )
+    }
+    private var playFeedback: ControlFeedback {
+        AccessibilityPresentation.playFeedback(
+            playing: session.playing || session.countdownValue != nil,
+            hapticsEnabled: preferences.hapticsEnabled
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -64,11 +85,13 @@ struct PlayerView: View {
                     highlights: script.highlights,
                     playing: session.playing,
                     speed: session.speed,
-                    fontSize: effectiveFont,
-                    lineSpacing: effectiveSpacing,
-                    theme: session.theme,
+                    fontSize: presentation.fontSize,
+                    lineSpacing: presentation.lineSpacing,
+                    theme: presentation.theme,
                     mirrored: session.mirror,
-                    gesturesEnabled: preferences.gestureControlsEnabled && session.countdownValue == nil,
+                    gesturesEnabled: presentation.gesturesEnabled,
+                    reduceMotion: presentation.reduceMotion,
+                    boldText: presentation.boldText,
                     transparentBackground: false,
                     resetToken: resetToken,
                     seekToken: seekToken,
@@ -92,8 +115,8 @@ struct PlayerView: View {
                 )
                 if session.focus {
                     Rectangle()
-                        .fill(session.theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
-                        .frame(height: UIAccessibility.isDarkerSystemColorsEnabled || profile.prefersHighContrast ? 4 : 2)
+                        .fill(presentation.theme == .light ? Color.black.opacity(0.12) : Color.white.opacity(0.18))
+                        .frame(height: presentation.focusThickness)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
@@ -106,7 +129,7 @@ struct PlayerView: View {
                         .accessibilityLabel("Starting in \(countdown)")
                 }
             }
-            .overlay(alignment: .top) { playerChrome }
+            .safeAreaInset(edge: .top, spacing: 0) { playerChrome }
             .safeAreaInset(edge: .bottom, spacing: 0) { transport }
             .background { KeyCommandHost(onKey: handleKey).frame(width: 0, height: 0) }
             .toolbar(.hidden, for: .navigationBar)
@@ -165,28 +188,37 @@ struct PlayerView: View {
                 .tint(CuevoraTheme.primary)
                 .accessibilityLabel("Estimated progress")
                 .accessibilityValue("\(Int(progress * 100)) percent")
-            HStack {
-                Text(ReadTime.clock(elapsed))
-                Spacer()
-                Text("About \(ReadTime.clock(remaining)) left")
+            if presentation.showEstimates {
+                HStack {
+                    Text(ReadTime.clock(elapsed))
+                    Spacer()
+                    Text("About \(ReadTime.clock(remaining)) left")
+                }
+                .font((presentation.prominentEstimates ? Font.body : Font.caption).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .combine)
             }
-            .font(.caption.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .accessibilityElement(children: .combine)
+            if presentation.theme != session.theme {
+                Text("High contrast is on, so the prompt uses the high-contrast theme.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             HStack(spacing: 18) {
                 roundButton("Reset", systemImage: "backward.end.fill") { reset() }
                 roundButton("Back 10 percent", systemImage: "gobackward.10") { seek(by: -0.1) }
-                Button(session.playing || session.countdownValue != nil ? "Pause" : "Play", systemImage: session.playing || session.countdownValue != nil ? "pause.fill" : "play.fill") { togglePlay() }
+                Button(playFeedback.visibleLabel, systemImage: playFeedback.visibleLabel == "Pause" ? "pause.fill" : "play.fill") { togglePlay() }
                     .font(.title)
                     .labelStyle(.iconOnly)
                     .foregroundStyle(.white)
                     .frame(width: 64, height: 64)
                     .background(CuevoraTheme.primary, in: Circle())
-                    .accessibilityLabel(session.playing || session.countdownValue != nil ? "Pause" : "Play")
+                    .accessibilityLabel(playFeedback.visibleLabel)
                 roundButton("Forward 10 percent", systemImage: "goforward.10") { seek(by: 0.1) }
                 optionsMenu
             }
-            if !simpleControls { sliders }
+            if presentation.showSpeedControl { speedControls }
+            if presentation.showAppearanceControls { appearanceControls }
             if let message = speech.message, voiceOn {
                 Text(message)
                     .font(.caption)
@@ -213,7 +245,9 @@ struct PlayerView: View {
             }
             Button("Rehearse", systemImage: "waveform") { showRehearsal = true }
             Button(voiceOn ? "Stop Voice Commands" : "Start Voice Commands") { toggleVoice() }
-            Text("Tap the sides to skip. Double-tap to play or pause. Pinch to change text size.")
+            Text(presentation.gesturesEnabled
+                 ? "Tap the sides to skip. Double-tap to play or pause. Pinch to change text size."
+                 : "Use the buttons. Gestures are off.")
         }
         .font(.title3)
         .labelStyle(.iconOnly)
@@ -221,7 +255,7 @@ struct PlayerView: View {
         .background(.ultraThinMaterial, in: Circle())
     }
 
-    private var sliders: some View {
+    private var speedControls: some View {
         VStack(spacing: 10) {
             HStack {
                 Text("Speed")
@@ -238,18 +272,33 @@ struct PlayerView: View {
             .accessibilityElement(children: .combine)
             HStack(spacing: 8) {
                 ForEach(PlaybackEngine.presets, id: \.self) { preset in
-                    Button(preset.formatted(.number.precision(.fractionLength(0)))) {
+                    let selected = session.speed == preset
+                    Button {
                         session.setSpeed(preset)
                         manualOverrideUntil = Date().addingTimeInterval(8)
+                    } label: {
+                        HStack(spacing: 4) {
+                            if presentation.selectionUsesShape && selected {
+                                Image(systemName: "checkmark")
+                            }
+                            Text(preset.formatted(.number.precision(.fractionLength(0))))
+                        }
                     }
                     .buttonStyle(.bordered)
-                    .tint(session.speed == preset ? CuevoraTheme.primary : .secondary)
+                    .tint(selected ? CuevoraTheme.primary : .secondary)
                     .accessibilityLabel("Speed \(Int(preset))")
+                    .accessibilityAddTraits(selected ? .isSelected : [])
                 }
                 Text(speedNote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+        .font(.caption)
+    }
+
+    private var appearanceControls: some View {
+        VStack(spacing: 10) {
             HStack {
                 Text("Text")
                 Slider(value: $session.fontSize, in: 16...72, step: 1)
@@ -294,7 +343,7 @@ struct PlayerView: View {
             watchCountdown()
         }
         updateAwake()
-        CuevoraHaptics.impact(enabled: preferences.hapticsEnabled)
+        CuevoraHaptics.impact(enabled: playFeedback.haptics)
     }
 
     private func pause() {
