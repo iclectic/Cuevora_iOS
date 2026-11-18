@@ -36,7 +36,13 @@ public enum RecordingAction: Equatable {
     case fileFailed(String)
     case discardPreview
     case shareFinished
+    case shareCancelled
     case shareFailed
+    case photosSaved
+    case photosDenied
+    case photosFailed
+    case audioRouteChanged
+    case storageLow
     case switchCamera
 }
 
@@ -122,11 +128,26 @@ public enum RecordingReducer {
         case .shareFinished:
             if case .preview = phase { return RecordingTransition(phase: phase, allowCameraSwitch: true) }
             return RecordingTransition(phase: phase)
+        case .shareCancelled:
+            return keepAfterShare(phase: phase, message: "Sharing was cancelled. This recording is still on this device.")
         case .shareFailed:
-            if case let .preview(partial) = phase {
-                return RecordingTransition(phase: .preview(partial: partial), allowCameraSwitch: true, message: "Sharing did not finish. This recording is still on this device.")
+            return keepAfterShare(phase: phase, message: "Sharing did not finish. This recording is still on this device.")
+        case .photosSaved:
+            return RecordingTransition(phase: phase, message: "Saved to Photos. The copy in Cuevora was kept.")
+        case .photosDenied:
+            return RecordingTransition(phase: phase, message: "Photos access is off, so nothing was added. The recording is still in Cuevora.")
+        case .photosFailed:
+            return RecordingTransition(phase: phase, message: "Photos could not save this video. The recording is still in Cuevora.")
+        case .audioRouteChanged:
+            if phase == .recording {
+                return RecordingTransition(phase: .recording, message: "The audio route changed. Recording continues on the microphone that is available.")
             }
-            return RecordingTransition(phase: phase, message: "Sharing did not finish.")
+            return RecordingTransition(phase: phase)
+        case .storageLow:
+            if phase == .recording {
+                return RecordingTransition(phase: .stopping(partial: true), finalizePartial: true, message: "Storage is too low to keep recording. Cuevora is saving the take.")
+            }
+            return RecordingTransition(phase: phase)
         case .switchCamera:
             let allowed = !isCapturing(phase) && !isStopping(phase)
             return RecordingTransition(
@@ -135,6 +156,13 @@ public enum RecordingReducer {
                 message: allowed ? nil : "The camera can be switched between takes. Switching during a take is not used, because an uninterrupted recording has not been verified."
             )
         }
+    }
+
+    private static func keepAfterShare(phase: RecordingPhase, message: String) -> RecordingTransition {
+        if case let .preview(partial) = phase {
+            return RecordingTransition(phase: .preview(partial: partial), deleteFile: false, allowCameraSwitch: true, message: message)
+        }
+        return RecordingTransition(phase: phase, deleteFile: false, message: message)
     }
 
     private static func isCapturing(_ phase: RecordingPhase) -> Bool {

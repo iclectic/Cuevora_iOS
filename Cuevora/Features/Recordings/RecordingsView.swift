@@ -44,6 +44,7 @@ struct RecordingsView: View {
             }
             .background(CuevoraTheme.background)
             .navigationTitle("Recordings")
+            .task { await adoptRecoveredTakes() }
             .confirmationDialog("Delete this take?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {
                 Button("Delete Take", role: .destructive) {
                     if let pendingDelete { delete(pendingDelete) }
@@ -63,6 +64,21 @@ struct RecordingsView: View {
     private func delete(_ item: RecordingItem) {
         RecordingFiles.removeFile(named: item.fileName)
         context.delete(item)
+        try? context.save()
+    }
+
+    private func adoptRecoveredTakes() async {
+        let found = await TakeRecoveryScan.shared.collect()
+        let existing = recordings.map(\.fileName)
+        for take in found where RecordingCatalog.shouldAdopt(fileName: take.fileName, existing: existing) {
+            context.insert(RecordingItem(
+                fileName: take.fileName,
+                scriptTitle: "Recovered take",
+                duration: take.duration,
+                partial: take.partial,
+                recoverable: take.recoverable
+            ))
+        }
         try? context.save()
     }
 }

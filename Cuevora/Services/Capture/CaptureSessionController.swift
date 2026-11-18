@@ -17,6 +17,7 @@ final class CaptureSessionController: NSObject, ObservableObject {
     @Published var savedTake: SavedTake?
     @Published var previewURL: URL?
     @Published var discardedFileName: String?
+    @Published var pendingLibraryTakes: [SavedTake] = []
 
     let session = AVCaptureSession()
     private let output = AVCaptureMovieFileOutput()
@@ -63,9 +64,13 @@ final class CaptureSessionController: NSObject, ObservableObject {
         applyAction(.cancelCountdown)
     }
     func discard() { applyAction(.discardPreview) }
-    func noteShareFailed() { applyAction(.shareFailed) }
+    func noteShare(_ result: ShareResult) { applyAction(result.action) }
     func switchCamera() { applyAction(.switchCamera) }
-    func backgrounded() { applyAction(.backgrounded) }
+    func backgrounded() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        applyAction(.backgrounded)
+    }
 
     func shutdown() {
         countdownTask?.cancel()
@@ -84,18 +89,15 @@ final class CaptureSessionController: NSObject, ObservableObject {
             return
         }
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
-            guard status == .authorized || status == .limited else {
-                DispatchQueue.main.async {
-                    self.message = "Photos access is off, so nothing was added. The recording is still in Cuevora."
-                }
+            let granted = status == .authorized || status == .limited
+            guard granted else {
+                DispatchQueue.main.async { self.applyAction(.photosDenied) }
                 return
             }
             PHPhotoLibrary.shared().performChanges {
                 PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: previewURL)
             } completionHandler: { success, _ in
-                DispatchQueue.main.async {
-                    self.message = success ? "Saved to Photos. The copy in Cuevora was kept." : "Photos could not save this video. The recording is still in Cuevora."
-                }
+                DispatchQueue.main.async { self.applyAction(success ? .photosSaved : .photosFailed) }
             }
         }
     }
@@ -131,15 +133,25 @@ final class CaptureSessionController: NSObject, ObservableObject {
 
     private func runCountdown(_ seconds: Int) {
         countdownTask?.cancel()
+        var clock = RecordingCountdown()
+        clock.start(seconds: seconds, at: .now)
         countdownTask = Task { @MainActor in
-            for remaining in stride(from: seconds, through: 1, by: -1) {
-                self.phase = .countdown(remaining)
-                try? await Task.sleep(for: .seconds(1))
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(200))
                 if Task.isCancelled { return }
+                switch clock.advance(to: .now) {
+                case .waiting(let remaining):
+                    guard case .countdown = self.phase else { return }
+                    self.phase = .countdown(remaining)
+                case .finished:
+                    guard case .countdown = self.phase else { return }
+                    self.apply(RecordingReducer.reduce(phase: self.phase, action: .countdownFinished))
+                    if self.phase == .recording { self.beginFile() }
+                    return
+                case .inactive:
+                    return
+                }
             }
-            let transition = RecordingReducer.reduce(phase: self.phase, action: .countdownFinished)
-            self.phase = transition.phase
-            if self.phase == .recording { self.beginFile() }
         }
     }
 
@@ -226,7 +238,7 @@ final class CaptureSessionController: NSObject, ObservableObject {
         }
         if connection.isVideoMirroringSupported {
             connection.automaticallyAdjustsVideoMirroring = false
-            connection.isVideoMirrored = false
+            connection.isVideoMirrored = CaptureMirror.recordedFileMirrored
         }
     }
 
@@ -249,9 +261,13 @@ final class CaptureSessionController: NSObject, ObservableObject {
     }
 
     private func freeBytes() -> Int64 {
+        knownFreeBytes() ?? 0
+    }
+
+    private func knownFreeBytes() -> Int64? {
         let url = URL(fileURLWithPath: NSHomeDirectory())
-        let capacity = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]).volumeAvailableCapacityForImportantUsage
-        return capacity ?? 0
+        guard let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]) else { return nil }
+        return values.volumeAvailableCapacityForImportantUsage
     }
 
     private var thermalSerious: Bool {
@@ -264,6 +280,10 @@ final class CaptureSessionController: NSObject, ObservableObject {
         let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self, let startedAt = self.startedAt else { return }
             self.elapsed = Date().timeIntervalSince(startedAt)
+            if let free = self.knownFreeBytes(), free < RecordingReducer.minimumFreeBytes {
+                self.applyAction(.storageLow)
+                return
+            }
             if ProcessInfo.processInfo.thermalState == .critical {
                 self.message = "The device is very warm. Cuevora is saving the take."
                 self.applyAction(.interrupted("Thermal pressure"))
@@ -297,15 +317,15 @@ final class CaptureSessionController: NSObject, ObservableObject {
     @objc private func sessionInterrupted(_ note: Notification) {
         let raw = note.userInfo?[AVCaptureSessionInterruptionReasonKey] as? Int
         let reason = raw.flatMap(AVCaptureSession.InterruptionReason.init(rawValue:))
-        let text: String
+        let kind: CaptureInterruptionKind
         switch reason {
-        case .audioDeviceInUseByAnotherClient: text = "The microphone is being used by another app."
-        case .videoDeviceInUseByAnotherClient: text = "The camera is being used by another app."
-        case .videoDeviceNotAvailableInBackground: text = "The camera stopped because Cuevora was in the background."
-        case .videoDeviceNotAvailableWithMultipleForegroundApps: text = "The camera stopped during multitasking."
-        default: text = "Recording was interrupted."
+        case .audioDeviceInUseByAnotherClient: kind = .audioInUse
+        case .videoDeviceInUseByAnotherClient: kind = .videoInUse
+        case .videoDeviceNotAvailableInBackground: kind = .background
+        case .videoDeviceNotAvailableWithMultipleForegroundApps: kind = .multitasking
+        default: kind = .unknown
         }
-        DispatchQueue.main.async { self.applyAction(.interrupted(text)) }
+        DispatchQueue.main.async { self.applyAction(.interrupted(kind.message)) }
     }
 
     @objc private func thermalChanged() {
@@ -318,28 +338,31 @@ final class CaptureSessionController: NSObject, ObservableObject {
 
     @objc private func routeChanged() {
         DispatchQueue.main.async {
-            if self.phase == .recording {
-                self.message = "The audio route changed. Recording continues if the microphone is still available."
-            }
+            guard self.phase == .recording, self.elapsed > 0 else { return }
+            self.applyAction(.audioRouteChanged)
         }
     }
 
     private func recoverOrphans() async {
-        guard let folder = try? RecordingFiles.folder() else { return }
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-        for marker in files where marker.pathExtension == "writing" {
-            let movie = marker.deletingPathExtension()
-            let asset = AVURLAsset(url: movie)
-            let playable = (try? await asset.load(.isPlayable)) ?? false
-            let duration = (try? await asset.load(.duration)).map { CMTimeGetSeconds($0) } ?? 0
-            let take = SavedTake(fileName: movie.lastPathComponent, duration: duration.isFinite ? duration : 0, partial: true, recoverable: playable && duration > 0)
-            await MainActor.run {
-                self.savedTake = take
-                self.previewURL = movie
-                self.phase = playable && duration > 0 ? .preview(partial: true) : .failed("A previous recording could not be recovered. The file is still available to share or delete.")
-                self.message = take.recoverable ? "A partial take was restored." : "Recovery failed"
+        let found = await TakeRecoveryScan.shared.collect()
+        guard !found.isEmpty else { return }
+        let takes = found.map {
+            SavedTake(fileName: $0.fileName, duration: $0.duration, partial: $0.partial, recoverable: $0.recoverable)
+        }
+        await MainActor.run {
+            self.pendingLibraryTakes = takes
+            let canSurface: Bool
+            switch self.phase {
+            case .idle, .failed: canSurface = true
+            default: canSurface = false
             }
-            try? FileManager.default.removeItem(at: marker)
+            guard canSurface, let latest = found.last else { return }
+            self.savedTake = takes.last
+            if let folder = try? RecordingFiles.folder() {
+                self.previewURL = folder.appendingPathComponent(latest.fileName)
+            }
+            self.phase = latest.phase
+            self.message = latest.message
         }
     }
 }
