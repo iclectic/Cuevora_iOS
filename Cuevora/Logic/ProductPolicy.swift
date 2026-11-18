@@ -31,6 +31,24 @@ public enum ShortcutPolicy {
     public static let actions = ShortcutAction.allCases
 }
 
+public enum ReleaseClaims {
+    public static let readyToUpload = false
+    public static let collectsDiagnostics = false
+    public static let diagnosticMayIncludeScriptText = false
+    public static let thirdPartySDKs: [String] = []
+    /// Used only to decide whether a recording can start or must stop. The byte count is not shown or sent.
+    public static let diskSpaceReason = "E174.1"
+    public static let bundleIdentifier = "app.cuevora.teleprompter.ios"
+    public static let marketingVersion = "0.1.0"
+    public static let buildNumber = "1"
+
+    public static func diagnostic(domain: String, code: Int, scriptText: String) -> [String: String] {
+        _ = scriptText
+        guard !collectsDiagnostics else { return [:] }
+        return ["domain": domain, "code": String(code)]
+    }
+}
+
 public struct PromptSession: Equatable, Codable {
     public var scriptID: String
     public var progress: Double
