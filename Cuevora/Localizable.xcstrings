@@ -1,0 +1,16 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "The interface is in English." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The interface is in English."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

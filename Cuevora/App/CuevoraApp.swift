@@ -35,10 +35,10 @@ private struct RootView: View {
     }
 
     private var colorScheme: ColorScheme? {
-        switch preferences.first?.colorMode {
-        case "light": .light
-        case "dark": .dark
-        default: nil
+        switch AppearanceChoice.resolve(preferences.first?.colorMode) {
+        case .light: .light
+        case .dark: .dark
+        case .system: nil
         }
     }
 

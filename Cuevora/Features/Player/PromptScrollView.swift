@@ -12,6 +12,8 @@ struct PromptScroll: UIViewRepresentable {
     var theme: PromptTheme
     var mirrored: Bool
     var gesturesEnabled: Bool
+    var reduceMotion: Bool
+    var boldText: Bool
     var transparentBackground: Bool
     var resetToken: Int
     var seekToken: Int
@@ -71,7 +73,9 @@ struct PromptScroll: UIViewRepresentable {
         coordinator.tap?.isEnabled = gesturesEnabled
         coordinator.doubleTap?.isEnabled = gesturesEnabled
         coordinator.pinch?.isEnabled = gesturesEnabled
-        let styleKey = "\(fontSize)-\(lineSpacing)-\(theme.rawValue)-\(text)-\(markers)-\(highlights)-\(transparentBackground)"
+        scroll.bounces = !reduceMotion
+        scroll.alwaysBounceVertical = !reduceMotion
+        let styleKey = "\(fontSize)-\(lineSpacing)-\(theme.rawValue)-\(boldText)-\(text)-\(markers)-\(highlights)-\(transparentBackground)"
         if coordinator.styleKey != styleKey {
             let fraction = coordinator.engine.progress
             applyStyle(scroll: scroll, label: coordinator.label)
@@ -127,7 +131,8 @@ struct PromptScroll: UIViewRepresentable {
                     .paragraphStyle: paragraph
                 ]))
             }
-            let font = UIFont.systemFont(ofSize: fontSize, weight: line.highlighted ? .bold : .medium)
+            let weight: UIFont.Weight = boldText || line.highlighted ? .bold : .medium
+            let font = UIFont.systemFont(ofSize: fontSize, weight: weight)
             string.append(NSAttributedString(string: line.text + "\n", attributes: [
                 .font: font,
                 .foregroundColor: foreground,
