@@ -39,7 +39,8 @@ struct RehearsalView: View {
                         LabeledContent("Pace", value: metrics.wordsPerMinute.map { "About \($0) words per minute" } ?? "Unavailable")
                         LabeledContent("Coverage", value: metrics.scriptCoverage.map { "About \(Int(($0 * 100).rounded())) percent" } ?? "Unavailable")
                         LabeledContent("Long pauses", value: "\(metrics.longPauseCount)")
-                        LabeledContent("Filler words", value: "\(metrics.fillerWordCount)")
+                        LabeledContent("Filler words", value: "About \(metrics.fillerWordCount), estimated")
+                        LabeledContent("Repeated words", value: "About \(metrics.repeatedWordCount), estimated")
                         ForEach(metrics.unavailableMetrics, id: \.self) { Text("\($0) unavailable").foregroundStyle(.secondary) }
                         ForEach(metrics.suggestions, id: \.self) { Text($0) }
                     }
@@ -56,7 +57,12 @@ struct RehearsalView: View {
                     Button("Close") { if !saved { speech.stop(); speech.resetTranscript() }; dismiss() }
                 }
             }
-            .onDisappear { if !saved { speech.stop() } }
+            .onDisappear {
+                if !saved {
+                    speech.stop()
+                    speech.resetTranscript()
+                }
+            }
         }
     }
 

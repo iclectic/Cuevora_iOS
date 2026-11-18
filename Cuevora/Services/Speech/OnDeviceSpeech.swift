@@ -21,8 +21,10 @@ final class OnDeviceSpeech: NSObject, ObservableObject {
     var localeIdentifier: String { Locale.current.identifier }
 
     func setRecordingInProgress(_ recording: Bool) {
-        recordingInProgress = recording
-        if recording { stop(reason: SpeechPrivacy.recordingContentionNote) }
+        let current: MicrophoneOwner = recordingInProgress ? .recording : (listening ? .speech : .idle)
+        let next = MicrophoneOwner.request(recording ? .recording : .idle, while: current)
+        recordingInProgress = next == .recording
+        if recordingInProgress { stop(reason: SpeechPrivacy.recordingContentionNote) }
     }
 
     func start() {
@@ -121,14 +123,15 @@ final class OnDeviceSpeech: NSObject, ObservableObject {
                     )
                     self.events.append(event)
                     if self.events.count > 50 { self.events.removeFirst(self.events.count - 50) }
-                    let command = VoiceCommands.parse(text)
+                    let command = SpeechIntake.command(transcript: text, confidence: event.confidence, isFinal: true)
                     if command != .unknown {
                         self.latestCommand = command
                         self.commandToken += 1
                     }
                 }
                 if error != nil {
-                    self.stop(reason: "Speech recognition stopped. Cuevora did not switch to server recognition. You can keep using the speed control.")
+                    let gate = SpeechGate(onDeviceSupported: true, permissionGranted: true, recordingInProgress: false, localeIdentifier: self.localeIdentifier, recognizerAvailable: false)
+                    self.stop(reason: gate.unavailableReason)
                 }
             }
         }
