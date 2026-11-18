@@ -21,3 +21,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: xcodebuild -project Cuevora.xcodeproj -scheme Cuevora -destination 'generic/platform=iOS Simulator' -configuration Debug CODE_SIGNING_ALLOWED=NO build
+      # A signed archive is not run here. It needs the owner's Apple Developer team, which is not in this project.

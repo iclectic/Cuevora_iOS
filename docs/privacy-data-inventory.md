@@ -14,9 +14,10 @@ Cuevora on iOS does not require an account. Scripts, settings, rehearsal reports
 ## Not collected
 
 - No account identifier, contact list, location, advertising identifier or analytics event is sent.
-- No Firebase, advertising or subscription SDK is linked.
-- Speech audio is handed to Apple's on-device recognizer when the user starts voice commands or a rehearsal. `requiresOnDeviceRecognition` is set. There is no server-recognition fallback.
+- No Firebase, advertising or subscription SDK is linked. There is no crash reporter. An error shown in the app is not uploaded, and it does not include the script text.
+- Speech audio is handed to Apple's on-device recognizer when the user starts voice commands or a rehearsal. `requiresOnDeviceRecognition` is set. There is no server-recognition fallback. A missing network does not change that.
 - Camera and microphone buffers stay in the capture session and the movie file.
+- Free disk space is read only to decide whether a recording can start or should stop. The number is not shown and is not sent off the device. The privacy manifest declares this as `NSPrivacyAccessedAPICategoryDiskSpace` with reason `E174.1`. User defaults, file timestamps, and boot time are not declared because this app does not call those APIs.
 
 ## Permissions
 
@@ -41,4 +42,4 @@ Delete Local Data in Settings removes scripts, revisions, rehearsal reports and 
 
 ## Privacy manifest
 
-`Cuevora/PrivacyInfo.xcprivacy` declares no tracking and no collected data types. App Store Connect nutrition labels still have to be answered from the signed build before submission. They are not filed by this repository.
+`Cuevora/PrivacyInfo.xcprivacy` declares no tracking, no collected data types, and the disk-space reason above. A draft for the owner to host is `docs/privacy-policy.md`. App Store Connect nutrition labels still have to be answered from the signed build before submission. They are not filed by this repository.
