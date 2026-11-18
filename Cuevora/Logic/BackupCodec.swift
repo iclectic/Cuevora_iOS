@@ -388,7 +388,8 @@ public enum BackupCodec {
                 scriptCoverage: number(metrics["scriptCoverage"]),
                 completionPercent: integer(metrics["completionPercent"]) ?? 0,
                 unavailableMetrics: (metrics["unavailableMetrics"] as? [Any] ?? []).compactMap { $0 as? String },
-                suggestions: (metrics["suggestions"] as? [Any] ?? []).compactMap { $0 as? String }
+                suggestions: (metrics["suggestions"] as? [Any] ?? []).compactMap { $0 as? String },
+                repeatedWordCount: integer(metrics["repeatedWordCount"]) ?? 0
             )
             return PortableRehearsal(
                 scriptSourceID: object["scriptId"] as? String,
@@ -484,6 +485,7 @@ public enum BackupCodec {
                 "wordsPerMinute": (session.metrics.wordsPerMinute ?? NSNull()) as Any,
                 "longPauseCount": session.metrics.longPauseCount,
                 "fillerWordCount": session.metrics.fillerWordCount,
+                "repeatedWordCount": session.metrics.repeatedWordCount,
                 "scriptCoverage": (session.metrics.scriptCoverage ?? NSNull()) as Any,
                 "completionPercent": session.metrics.completionPercent,
                 "unavailableMetrics": session.metrics.unavailableMetrics,

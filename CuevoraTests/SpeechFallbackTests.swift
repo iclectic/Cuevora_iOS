@@ -59,6 +59,18 @@ final class SpeechFallbackTests: XCTestCase {
         XCTAssertNil(empty.wordsPerMinute)
         XCTAssertTrue(empty.unavailableMetrics.contains("Speech transcript"))
         XCTAssertTrue(empty.suggestions[0].contains("speech recognition"))
+        let noisy = RehearsalAnalysis.analyze(
+            scriptContent: "one two three four five",
+            events: [
+                event("one two", 1000),
+                TranscriptEvent(transcript: "two two two", confidence: 0.1, isFinal: true, timestamp: 2000, source: "test"),
+                event("three four five", 3000)
+            ],
+            startedAt: 0,
+            endedAt: 4_000
+        )
+        XCTAssertEqual(noisy.repeatedWordCount, 0)
+        XCTAssertEqual(RehearsalAnalysis.repeatedWords(in: "go go go back back"), 3)
     }
 
     private func event(_ transcript: String, _ timestamp: Double) -> TranscriptEvent {

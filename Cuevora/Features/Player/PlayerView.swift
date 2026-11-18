@@ -125,12 +125,16 @@ struct PlayerView: View {
                 if scenePhase != .active {
                     pause()
                     saveProgress()
+                    releaseSpeechAfterInterruption("Voice commands paused because Cuevora was in the background. Turn them on again to listen.")
                 }
             }
             .onChange(of: session.phase) { updateAwake() }
             .onChange(of: speech.commandToken) { handleVoice(speech.latestCommand) }
             .onChange(of: speech.events.count) { updateAdaptiveSpeed() }
-            .fullScreenCover(isPresented: $showRecording) {
+            .fullScreenCover(isPresented: $showRecording, onDismiss: {
+                speech.setRecordingInProgress(false)
+                releaseSpeechAfterInterruption("Voice commands stayed off after recording. Turn them on again if you want them.")
+            }) {
                 RecordingView(script: script, preferences: preferences)
             }
             .sheet(isPresented: $showRehearsal) {
@@ -371,6 +375,12 @@ struct PlayerView: View {
         } else {
             speedNote = "Fixed speed"
         }
+    }
+
+    private func releaseSpeechAfterInterruption(_ reason: String) {
+        guard voiceOn else { return }
+        voiceOn = false
+        speech.stop(reason: reason)
     }
 
     private func openRecording() {
